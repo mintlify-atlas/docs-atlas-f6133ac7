@@ -1,0 +1,512 @@
+---
+title: 'JWT Configuration'
+description: 'Configure JWT authentication with tymon/jwt-auth'
+icon: 'key'
+---
+
+## Overview
+
+The Rihsac API uses [tymon/jwt-auth](https://github.com/tymondesigns/jwt-auth) (v1.0) for stateless API authentication. This guide covers installation, configuration, and usage of JWT tokens in the application.
+
+## Installation
+
+The JWT package is already included in `composer.json`:
+
+```json
+"require": {
+    "tymon/jwt-auth": "^1.0"
+}
+```
+
+If you need to install it manually:
+
+```bash
+composer require tymon/jwt-auth:^1.0
+```
+
+## Setup Steps
+
+<Steps>
+  <Step title="Publish Configuration">
+    Publish the JWT configuration file:
+    
+    ```bash
+    php artisan vendor:publish --provider="Tymon\JWTAuth\Providers\LaravelServiceProvider"
+    ```
+    
+    This creates `config/jwt.php` in your project.
+  </Step>
+
+  <Step title="Generate JWT Secret">
+    Generate a secret key for signing tokens:
+    
+    ```bash
+    php artisan jwt:secret
+    ```
+    
+    This adds `JWT_SECRET` to your `.env` file.
+  </Step>
+
+  <Step title="Update User Model">
+    Add the `JWTSubject` interface to your User model:
+    
+    ```php
+    use Tymon\JWTAuth\Contracts\JWTSubject;
+
+    class User extends Authenticatable implements JWTSubject
+    {
+        // Add these methods
+        public function getJWTIdentifier()
+        {
+            return $this->getKey();
+        }
+
+        public function getJWTCustomClaims()
+        {
+            return [];
+        }
+    }
+    ```
+  </Step>
+
+  <Step title="Configure Auth Guard">
+    The application is already configured to use JWT for API authentication in `config/auth.php`:
+    
+    ```php
+    'defaults' => [
+        'guard' => 'api',
+        'passwords' => 'users',
+    ],
+
+    'guards' => [
+        'api' => [
+            'driver' => 'jwt',
+            'provider' => 'users',
+            'hash' => false,
+        ],
+    ],
+    ```
+  </Step>
+</Steps>
+
+## Configuration Options
+
+### JWT Secret
+
+The JWT secret is used to sign tokens using HMAC algorithms:
+
+```php
+'secret' => env('JWT_SECRET'),
+```
+
+<Warning>
+  Never commit your `JWT_SECRET` to version control. Keep it secure and rotate it periodically in production.
+</Warning>
+
+### Token Time-to-Live (TTL)
+
+Configure how long tokens remain valid:
+
+```php
+'ttl' => env('JWT_TTL', 60),  // 60 minutes by default
+```
+
+To customize the TTL, add to your `.env`:
+
+```bash
+JWT_TTL=60  # Token valid for 60 minutes
+```
+
+<Note>
+  Setting `JWT_TTL` to `null` creates tokens that never expire. This is not recommended for production.
+</Note>
+
+### Refresh Time-to-Live
+
+Configure the refresh token window:
+
+```php
+'refresh_ttl' => env('JWT_REFRESH_TTL', 20160),  // 2 weeks
+```
+
+Users can refresh their token within this window:
+
+```bash
+JWT_REFRESH_TTL=20160  # 2 weeks in minutes
+```
+
+### Signing Algorithm
+
+Specify the hashing algorithm:
+
+```php
+'algo' => env('JWT_ALGO', 'HS256'),
+```
+
+**Supported Algorithms:**
+
+<CodeGroup>
+```bash Symmetric (HMAC)
+# Uses JWT_SECRET
+JWT_ALGO=HS256  # Default
+JWT_ALGO=HS384
+JWT_ALGO=HS512
+```
+
+```bash Asymmetric (RSA)
+# Requires public/private key pair
+JWT_ALGO=RS256
+JWT_ALGO=RS384
+JWT_ALGO=RS512
+
+# Configure keys in .env
+JWT_PUBLIC_KEY=file:///path/to/public.key
+JWT_PRIVATE_KEY=file:///path/to/private.key
+JWT_PASSPHRASE=your_passphrase
+```
+
+```bash Asymmetric (ECDSA)
+# Requires public/private key pair
+JWT_ALGO=ES256
+JWT_ALGO=ES384
+JWT_ALGO=ES512
+```
+</CodeGroup>
+
+### Required Claims
+
+JWT tokens must include these claims:
+
+```php
+'required_claims' => [
+    'iss',  // Issuer
+    'iat',  // Issued At
+    'exp',  // Expiration Time
+    'nbf',  // Not Before
+    'sub',  // Subject (user ID)
+    'jti',  // JWT ID
+],
+```
+
+### Blacklist Configuration
+
+Enable token blacklisting for logout functionality:
+
+```php
+'blacklist_enabled' => env('JWT_BLACKLIST_ENABLED', true),
+'blacklist_grace_period' => env('JWT_BLACKLIST_GRACE_PERIOD', 0),
+```
+
+Configuration in `.env`:
+
+```bash
+JWT_BLACKLIST_ENABLED=true
+JWT_BLACKLIST_GRACE_PERIOD=0  # seconds
+```
+
+<Note>
+  The grace period prevents parallel request failures during token regeneration. Set to a few seconds (e.g., 5) if you experience issues with concurrent requests.
+</Note>
+
+### Leeway for Clock Skew
+
+Handle slight time differences between servers:
+
+```php
+'leeway' => env('JWT_LEEWAY', 0),
+```
+
+```bash
+JWT_LEEWAY=10  # 10 seconds of leeway
+```
+
+### Lock Subject
+
+Prevents token impersonation across different models:
+
+```php
+'lock_subject' => true,
+```
+
+Keep this enabled unless you have a specific reason to disable it.
+
+## Usage Examples
+
+### Generating Tokens
+
+In your authentication controller:
+
+```php
+use Illuminate\Support\Facades\Auth;
+
+public function login(Request $request)
+{
+    $credentials = $request->only('email', 'password');
+
+    if (!$token = Auth::attempt($credentials)) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+
+    return $this->respondWithToken($token);
+}
+
+protected function respondWithToken($token)
+{
+    return response()->json([
+        'access_token' => $token,
+        'token_type' => 'bearer',
+        'expires_in' => Auth::factory()->getTTL() * 60
+    ]);
+}
+```
+
+### Protecting Routes
+
+Protect routes with JWT middleware:
+
+```php
+// In routes/api.php
+Route::middleware('auth:api')->group(function () {
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
+    
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/refresh', [AuthController::class, 'refresh']);
+});
+```
+
+### Refreshing Tokens
+
+Implement token refresh:
+
+```php
+public function refresh()
+{
+    return $this->respondWithToken(Auth::refresh());
+}
+```
+
+### Logging Out
+
+Invalidate the token:
+
+```php
+public function logout()
+{
+    Auth::logout();
+
+    return response()->json(['message' => 'Successfully logged out']);
+}
+```
+
+### Getting Authenticated User
+
+Access the authenticated user:
+
+```php
+$user = Auth::user();
+// or
+$user = auth()->user();
+// or in controller
+$user = $request->user();
+```
+
+## Custom Claims
+
+Add custom data to tokens by modifying the User model:
+
+```php
+public function getJWTCustomClaims()
+{
+    return [
+        'role' => $this->role,
+        'email_verified' => $this->email_verified,
+    ];
+}
+```
+
+<Warning>
+  Don't include sensitive information in custom claims. JWT tokens are encoded, not encrypted, and can be decoded by anyone.
+</Warning>
+
+## Authentication Headers
+
+### Making Authenticated Requests
+
+Include the JWT token in the Authorization header:
+
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+     https://api.example.com/api/user
+```
+
+<CodeGroup>
+```javascript JavaScript
+fetch('https://api.example.com/api/user', {
+  headers: {
+    'Authorization': 'Bearer ' + token,
+    'Content-Type': 'application/json'
+  }
+})
+```
+
+```python Python
+import requests
+
+headers = {
+    'Authorization': f'Bearer {token}',
+    'Content-Type': 'application/json'
+}
+
+response = requests.get('https://api.example.com/api/user', headers=headers)
+```
+
+```php PHP
+$client = new GuzzleHttp\Client();
+$response = $client->request('GET', 'https://api.example.com/api/user', [
+    'headers' => [
+        'Authorization' => 'Bearer ' . $token,
+        'Content-Type' => 'application/json',
+    ]
+]);
+```
+</CodeGroup>
+
+## Production Considerations
+
+### Security Best Practices
+
+<Warning>
+  **Critical Security Measures:**
+  - Always use HTTPS in production
+  - Never expose `JWT_SECRET` in client-side code
+  - Rotate secrets periodically
+  - Set appropriate TTL values (not too long)
+  - Enable blacklisting for logout functionality
+  - Use secure password hashing (bcrypt/argon2)
+</Warning>
+
+### Environment Variables for Production
+
+```bash
+# Production JWT configuration
+JWT_SECRET=your_production_secret_here
+JWT_TTL=60                    # 1 hour
+JWT_REFRESH_TTL=20160         # 2 weeks
+JWT_ALGO=HS256
+JWT_BLACKLIST_ENABLED=true
+JWT_BLACKLIST_GRACE_PERIOD=5  # 5 seconds
+```
+
+### Monitoring
+
+Log authentication events:
+
+```php
+use Illuminate\Support\Facades\Log;
+
+public function login(Request $request)
+{
+    $credentials = $request->only('email', 'password');
+
+    if (!$token = Auth::attempt($credentials)) {
+        Log::warning('Failed login attempt', ['email' => $request->email]);
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+
+    Log::info('Successful login', ['user_id' => Auth::id()]);
+    return $this->respondWithToken($token);
+}
+```
+
+## Troubleshooting
+
+### Token Not Found
+
+Ensure the Authorization header is formatted correctly:
+
+```
+Authorization: Bearer <token>
+```
+
+### Token Invalid
+
+Verify:
+1. `JWT_SECRET` matches between token generation and validation
+2. Token hasn't expired
+3. Token hasn't been blacklisted
+4. Required claims are present
+
+### Token Expired
+
+Handle expired tokens gracefully:
+
+```php
+try {
+    $user = Auth::userOrFail();
+} catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
+    return response()->json(['error' => 'Token expired'], 401);
+} catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
+    return response()->json(['error' => 'Token invalid'], 401);
+}
+```
+
+### Can't Refresh Token
+
+Check if the token is within the refresh window (`JWT_REFRESH_TTL`).
+
+## Testing JWT Authentication
+
+Test JWT authentication in your application:
+
+```php
+use Tests\TestCase;
+
+class AuthenticationTest extends TestCase
+{
+    public function test_user_can_login_and_get_token()
+    {
+        $user = User::factory()->create([
+            'password' => bcrypt('password123')
+        ]);
+
+        $response = $this->postJson('/api/login', [
+            'email' => $user->email,
+            'password' => 'password123'
+        ]);
+
+        $response->assertStatus(200)
+                 ->assertJsonStructure(['access_token', 'token_type', 'expires_in']);
+    }
+
+    public function test_authenticated_user_can_access_protected_route()
+    {
+        $user = User::factory()->create();
+        $token = Auth::login($user);
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+                         ->getJson('/api/user');
+
+        $response->assertStatus(200)
+                 ->assertJson(['id' => $user->id]);
+    }
+}
+```
+
+## Additional Resources
+
+- [tymon/jwt-auth Documentation](https://jwt-auth.readthedocs.io/en/develop/)
+- [JWT.io Debugger](https://jwt.io/) - Decode and verify JWT tokens
+- [RFC 7519 - JWT Specification](https://tools.ietf.org/html/rfc7519)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Environment Setup" icon="gear" href="/guides/environment-setup">
+    Configure your development environment
+  </Card>
+  <Card title="Authentication API" icon="lock" href="/api-reference/authentication">
+    Explore authentication endpoints
+  </Card>
+</CardGroup>

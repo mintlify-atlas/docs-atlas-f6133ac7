@@ -1,0 +1,207 @@
+---
+title: 'Verify Phone Number'
+description: 'Update and verify user phone number with SMS verification'
+---
+
+## Overview
+
+This endpoint allows users to add their phone number and other profile information during onboarding. After updating the profile, a verification code is automatically sent via SMS to the provided phone number.
+
+<Note>
+  This endpoint requires JWT authentication and completed email verification.
+</Note>
+
+## Update Phone Number
+
+### Endpoint
+
+```
+POST /api/phone/update
+```
+
+### Authentication
+
+This endpoint requires a valid JWT token in the Authorization header:
+
+```
+Authorization: Bearer {jwt_token}
+```
+
+### Request Body
+
+<ParamField body="phone_number" type="string" required>
+  User's phone number in international format
+</ParamField>
+
+<ParamField body="firstname" type="string" required>
+  User's first name
+</ParamField>
+
+<ParamField body="lastname" type="string" required>
+  User's last name
+</ParamField>
+
+<ParamField body="state_id" type="integer" required>
+  ID of the user's state/region
+</ParamField>
+
+### Request Example
+
+```bash
+curl -X POST https://api.rihsac.com/api/phone/update \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone_number": "+2348012345678",
+    "firstname": "John",
+    "lastname": "Doe",
+    "state_id": 1
+  }'
+```
+
+### Success Response
+
+```json
+{
+  "status": "success",
+  "message": "Profile update Successful",
+  "data": ""
+}
+```
+
+<Note>
+  Upon successful update, a 6-digit SMS verification code is automatically sent to the phone number via Twilio
+</Note>
+
+## Verify Phone Number
+
+After receiving the SMS code, users must verify their phone number:
+
+### Endpoint
+
+```
+POST /api/phone/verify
+```
+
+### Authentication
+
+Requires JWT token.
+
+### Request Body
+
+<ParamField body="verification_code" type="string" required>
+  The 6-digit verification code received via SMS
+</ParamField>
+
+### Request Example
+
+```bash
+curl -X POST https://api.rihsac.com/api/phone/verify \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "verification_code": "123456"
+  }'
+```
+
+### Success Response
+
+```json
+{
+  "status": "success",
+  "message": "Phone Number Verification Successful",
+  "data": ""
+}
+```
+
+### Error Response
+
+```json
+{
+  "status": "failure",
+  "message": "Unable to confirm phone number",
+  "error": ""
+}
+```
+
+## Implementation Details
+
+### Phone Update Process
+
+- Updates user profile with phone number, firstname, lastname, and state
+- Sets `onboarding_stage` to `PHONE_VERIFY`
+- Generates a 6-digit verification code (100000-999999)
+- Stores the code in `activation_tokens` table with type `PHONE_TOKEN`
+- Sends SMS via Twilio with the verification code
+- Creates activity log entry
+
+### Phone Verification Process
+
+- Validates the verification code against `activation_tokens` table
+- Upon successful verification:
+  - Sets `phone_verified` to `true`
+  - Updates `onboarding_stage` to `PRE_DASHBOARD`
+  - Deletes the verification code
+  - Creates activity log entry
+
+## Resend SMS Verification Code
+
+If users don't receive the SMS, they can request a new code:
+
+### Endpoint
+
+```
+POST /api/phone/resend
+```
+
+### Authentication
+
+Requires JWT token.
+
+### Request Example
+
+```bash
+curl -X POST https://api.rihsac.com/api/phone/resend \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
+```
+
+### Success Response
+
+```json
+{
+  "status": "success",
+  "message": "SMS sent Successful",
+  "data": ""
+}
+```
+
+<Warning>
+  Users can only request a new SMS code once per minute to prevent spam
+</Warning>
+
+## SMS Integration
+
+The API uses Twilio for SMS delivery. Configuration is environment-based:
+
+- **Local environment**: Uses `cashir.staging` configuration
+- **Production environment**: Uses `cashir.production` configuration
+
+Required Twilio configuration:
+- `TWILIO_SID`: Twilio Account SID
+- `TWILIO_AUTH_TOKEN`: Twilio Auth Token
+- `TWILIO_NUMBER`: Twilio phone number for sending SMS
+
+## Error Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Phone verification successful |
+| 400 | Invalid verification code or missing phone number |
+| 401 | Unauthorized - Invalid or missing JWT token |
+| 429 | Too many resend requests (less than 1 minute since last request) |
+
+## Related Endpoints
+
+- [Verify Email](/api/onboarding/verify-email) - Previous onboarding step
+- [Create Username](/api/onboarding/username) - Next onboarding step
+- [Create Transaction PIN](/api/onboarding/transaction-pin) - Required for transactions

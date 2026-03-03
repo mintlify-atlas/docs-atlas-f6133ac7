@@ -1,0 +1,253 @@
+---
+title: 'Create Username'
+description: 'Create a unique username for the user account'
+---
+
+## Overview
+
+This endpoint allows users to create a unique username for their account. The username can be used for identification and may be displayed publicly in the application.
+
+<Note>
+  This endpoint requires JWT authentication. Users must have verified their email and phone number before creating a username.
+</Note>
+
+## Endpoint
+
+```
+POST /api/username/update
+```
+
+## Authentication
+
+This endpoint requires a valid JWT token in the Authorization header:
+
+```
+Authorization: Bearer {jwt_token}
+```
+
+## Request Body
+
+<ParamField body="username" type="string" required>
+  The desired username (maximum 30 characters, must be unique)
+</ParamField>
+
+## Validation Rules
+
+- Username is required
+- Maximum length: 30 characters
+- Must be unique across all users
+- Cannot be changed once set (consider this during implementation)
+
+<Warning>
+  Usernames must be unique. If the username is already taken, the request will fail with a validation error.
+</Warning>
+
+## Request Example
+
+```bash
+curl -X POST https://api.rihsac.com/api/username/update \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "johndoe2024"
+  }'
+```
+
+## Response
+
+### Success Response
+
+When username is created successfully:
+
+<ResponseField name="status" type="string">
+  Status of the request ("success")
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+<ResponseField name="data" type="string">
+  Additional data (usually empty)
+</ResponseField>
+
+```json
+{
+  "status": "success",
+  "message": "Username update successful",
+  "data": ""
+}
+```
+
+### Error Response
+
+When username creation fails due to prerequisites not being met:
+
+```json
+{
+  "status": "failure",
+  "message": "Unable to update username.",
+  "error": ""
+}
+```
+
+### Validation Error Response
+
+When username already exists:
+
+```json
+{
+  "status": "failure",
+  "message": "Username exists",
+  "error": {
+    "username": [
+      "The username has already been taken."
+    ]
+  }
+}
+```
+
+When username exceeds maximum length:
+
+```json
+{
+  "status": "failure",
+  "message": "Username exists",
+  "error": {
+    "username": [
+      "The username must not be greater than 30 characters."
+    ]
+  }
+}
+```
+
+## Implementation Details
+
+### Prerequisites
+
+Before creating a username, the user must have:
+
+1. Verified email address (`email` is not null)
+2. Verified phone number (`phone_number` is not null)
+
+If these conditions are not met, the API returns an error:
+
+```json
+{
+  "status": "failure",
+  "message": "Unable to update username.",
+  "error": ""
+}
+```
+
+### Processing Steps
+
+1. Validates JWT token and retrieves authenticated user
+2. Validates username format (required, max 30 characters)
+3. Checks username uniqueness in the database
+4. Verifies that user has completed email and phone verification
+5. Updates user record with the username
+6. Creates activity log entry with type `USERNAME`
+
+<Note>
+  The username validation checks for uniqueness across the entire `users` table using the `unique:users,username` validation rule
+</Note>
+
+## Username Guidelines
+
+While the API validates the technical requirements, consider implementing these client-side guidelines:
+
+### Recommended Format
+
+- Alphanumeric characters (letters and numbers)
+- Underscores and hyphens may be allowed
+- No spaces
+- Case-insensitive (consider normalizing to lowercase)
+
+### Suggested Restrictions
+
+- Avoid offensive or inappropriate usernames
+- Prevent impersonation of system accounts or admins
+- Block common reserved words (admin, system, root, etc.)
+
+<Warning>
+  The current API implementation does not enforce character restrictions beyond length and uniqueness. Consider adding additional validation rules based on your requirements.
+</Warning>
+
+## Activity Logging
+
+When a username is successfully created, an activity log entry is recorded:
+
+- **Description**: "updated username"
+- **Type**: `USERNAME`
+- **User ID**: Authenticated user's ID
+
+This helps track account changes and provides an audit trail.
+
+## Common Scenarios
+
+### Scenario 1: New User Creating Username
+
+```bash
+# User has completed email and phone verification
+curl -X POST https://api.rihsac.com/api/username/update \
+  -H "Authorization: Bearer {valid_token}" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "newuser123"}'
+
+# Response: 200 OK
+```
+
+### Scenario 2: Username Already Taken
+
+```bash
+# Attempting to use an existing username
+curl -X POST https://api.rihsac.com/api/username/update \
+  -H "Authorization: Bearer {valid_token}" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "johndoe"}'
+
+# Response: 422 Validation Error
+```
+
+### Scenario 3: Incomplete Verification
+
+```bash
+# User hasn't verified email or phone
+curl -X POST https://api.rihsac.com/api/username/update \
+  -H "Authorization: Bearer {valid_token}" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "newuser123"}'
+
+# Response: 400 Unable to update username
+```
+
+## Error Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Username created successfully |
+| 400 | Unable to update username (prerequisites not met) |
+| 401 | Unauthorized - Invalid or missing JWT token |
+| 422 | Validation error - Username exists or invalid format |
+
+## Related Endpoints
+
+- [Verify Email](/api/onboarding/verify-email) - Required before username creation
+- [Verify Phone](/api/onboarding/verify-phone) - Required before username creation
+- [Create Transaction PIN](/api/onboarding/transaction-pin) - Another onboarding step
+
+## Best Practices
+
+1. **Uniqueness Check**: Consider adding a client-side username availability check before form submission
+2. **User Feedback**: Provide real-time validation feedback as users type their username
+3. **Character Restrictions**: Implement additional character restrictions based on your business requirements
+4. **Reserved Usernames**: Maintain a list of reserved usernames that cannot be used
+5. **Username Change**: If you plan to allow username changes in the future, consider the implications on user identification and implement appropriate safeguards
+
+## Notes
+
+- Usernames are case-sensitive in the current implementation
+- The maximum length of 30 characters is enforced at the database and validation level
+- Consider implementing a username blacklist for offensive terms
+- The route name is `user.username.update` but the endpoint appears to create the username for the first time based on the implementation

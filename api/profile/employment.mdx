@@ -1,0 +1,204 @@
+---
+title: 'Employment Information'
+api: 'POST https://api.rihsac.com/api/profile/employment'
+description: 'Store or update employment information for the authenticated user'
+---
+
+## Authentication
+
+This endpoint requires JWT authentication. Include the bearer token in the Authorization header.
+
+```bash
+Authorization: Bearer {token}
+```
+
+## Request Body
+
+<ParamField body="employment_status" type="integer" required>
+  Employment status ID (must exist in settings table)
+</ParamField>
+
+<ParamField body="number_of_dependents" type="integer" required>
+  Number of dependents
+</ParamField>
+
+<ParamField body="monthly_income" type="string" required>
+  Monthly income amount
+</ParamField>
+
+<ParamField body="monthly_savings" type="string" required>
+  Monthly savings amount
+</ParamField>
+
+<ParamField body="monthly_expense" type="string" required>
+  Monthly expense amount
+</ParamField>
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status: "success" or "failure"
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Response message describing the result
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Empty on successful store operation
+</ResponseField>
+
+<Expandable title="Success Response Example">
+
+```json
+{
+  "status": "success",
+  "message": "Employment information update successful",
+  "data": {}
+}
+```
+
+</Expandable>
+
+<Expandable title="Error Response Example">
+
+```json
+{
+  "status": "failure",
+  "message": "Validation errors",
+  "data": {
+    "employment_status": ["The employment status field is required."]
+  }
+}
+```
+
+</Expandable>
+
+## Code Example
+
+```bash cURL
+curl -X POST https://api.rihsac.com/api/profile/employment \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "employment_status": 1,
+    "number_of_dependents": 2,
+    "monthly_income": "150000",
+    "monthly_savings": "30000",
+    "monthly_expense": "100000"
+  }'
+```
+
+---
+
+# Get Employment Information
+
+<api method="GET" endpoint="https://api.rihsac.com/api/profile/employment" />
+
+Retrieve the employment information for the authenticated user.
+
+## Authentication
+
+This endpoint requires JWT authentication. Include the bearer token in the Authorization header.
+
+```bash
+Authorization: Bearer {token}
+```
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status: "success" or "failure"
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Response message describing the result
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Employment information object
+  
+  <Expandable title="data properties">
+    <ResponseField name="id" type="integer">
+      Unique employment record ID
+    </ResponseField>
+    
+    <ResponseField name="uuid" type="string">
+      Unique identifier (UUID v4)
+    </ResponseField>
+    
+    <ResponseField name="user_id" type="integer">
+      Associated user ID
+    </ResponseField>
+    
+    <ResponseField name="employment_status" type="integer">
+      Employment status ID
+    </ResponseField>
+    
+    <ResponseField name="number_of_dependents" type="integer">
+      Number of dependents
+    </ResponseField>
+    
+    <ResponseField name="monthly_income" type="string">
+      Monthly income amount
+    </ResponseField>
+    
+    <ResponseField name="monthly_savings" type="string">
+      Monthly savings amount
+    </ResponseField>
+    
+    <ResponseField name="monthly_expense" type="string">
+      Monthly expense amount
+    </ResponseField>
+    
+    <ResponseField name="created_at" type="string">
+      Timestamp when record was created
+    </ResponseField>
+    
+    <ResponseField name="updated_at" type="string">
+      Timestamp when record was last updated
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<Expandable title="Success Response Example">
+
+```json
+{
+  "status": "success",
+  "message": "Employment information retrieved successful",
+  "data": {
+    "id": 1,
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "user_id": 123,
+    "employment_status": 1,
+    "number_of_dependents": 2,
+    "monthly_income": "150000",
+    "monthly_savings": "30000",
+    "monthly_expense": "100000",
+    "created_at": "2024-01-15T10:30:00.000000Z",
+    "updated_at": "2024-01-15T10:30:00.000000Z"
+  }
+}
+```
+
+</Expandable>
+
+<Expandable title="Error Response Example">
+
+```json
+{
+  "status": "failure",
+  "message": "Unable to get employment information.",
+  "data": {}
+}
+```
+
+</Expandable>
+
+## Code Example
+
+```bash cURL
+curl -X GET https://api.rihsac.com/api/profile/employment \
+  -H "Authorization: Bearer {token}"
+```

@@ -1,0 +1,175 @@
+---
+title: 'Residential Information'
+api: 'POST https://api.rihsac.com/api/profile/residential'
+description: 'Store or update residential information for the authenticated user'
+---
+
+## Authentication
+
+This endpoint requires JWT authentication. Include the bearer token in the Authorization header.
+
+```bash
+Authorization: Bearer {token}
+```
+
+## Request Body
+
+<ParamField body="apartment_type" type="integer" required>
+  Apartment type ID (must exist in settings table)
+</ParamField>
+
+<ParamField body="ownership" type="integer" required>
+  Ownership type ID (must exist in settings table)
+</ParamField>
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status: "success" or "failure"
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Response message describing the result
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Empty on successful store operation
+</ResponseField>
+
+<Expandable title="Success Response Example">
+
+```json
+{
+  "status": "success",
+  "message": "Residential information update successful",
+  "data": {}
+}
+```
+
+</Expandable>
+
+<Expandable title="Error Response Example">
+
+```json
+{
+  "status": "failure",
+  "message": "Validation errors",
+  "data": {
+    "apartment_type": ["The apartment type field is required."],
+    "ownership": ["The ownership field is required."]
+  }
+}
+```
+
+</Expandable>
+
+## Code Example
+
+```bash cURL
+curl -X POST https://api.rihsac.com/api/profile/residential \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "apartment_type": 1,
+    "ownership": 2
+  }'
+```
+
+---
+
+# Get Residential Information
+
+<api method="GET" endpoint="https://api.rihsac.com/api/profile/residential" />
+
+Retrieve the residential information for the authenticated user.
+
+## Authentication
+
+This endpoint requires JWT authentication. Include the bearer token in the Authorization header.
+
+```bash
+Authorization: Bearer {token}
+```
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status: "success" or "failure"
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Response message describing the result
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Residential information object
+  
+  <Expandable title="data properties">
+    <ResponseField name="id" type="integer">
+      Unique residential record ID
+    </ResponseField>
+    
+    <ResponseField name="uuid" type="string">
+      Unique identifier (UUID v4)
+    </ResponseField>
+    
+    <ResponseField name="user_id" type="integer">
+      Associated user ID
+    </ResponseField>
+    
+    <ResponseField name="apartment_type" type="integer">
+      Apartment type ID
+    </ResponseField>
+    
+    <ResponseField name="ownership" type="integer">
+      Ownership type ID
+    </ResponseField>
+    
+    <ResponseField name="created_at" type="string">
+      Timestamp when record was created
+    </ResponseField>
+    
+    <ResponseField name="updated_at" type="string">
+      Timestamp when record was last updated
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<Expandable title="Success Response Example">
+
+```json
+{
+  "status": "success",
+  "message": "Residential information retrieved successful",
+  "data": {
+    "id": 1,
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "user_id": 123,
+    "apartment_type": 1,
+    "ownership": 2,
+    "created_at": "2024-01-15T10:30:00.000000Z",
+    "updated_at": "2024-01-15T10:30:00.000000Z"
+  }
+}
+```
+
+</Expandable>
+
+<Expandable title="Error Response Example">
+
+```json
+{
+  "status": "failure",
+  "message": "Unable to get residential information.",
+  "data": {}
+}
+```
+
+</Expandable>
+
+## Code Example
+
+```bash cURL
+curl -X GET https://api.rihsac.com/api/profile/residential \
+  -H "Authorization: Bearer {token}"
+```

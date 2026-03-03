@@ -1,0 +1,144 @@
+---
+title: "Cashir Overview"
+description: "Understanding the Cashir cash transaction system in Rihsac API"
+---
+
+## Introduction
+
+Cashir is Rihsac's cash transaction management system that handles various types of cash operations including cash requests, cash provision, and agent transactions. The system integrates with multiple payment channels to facilitate secure cash transactions.
+
+## What is Cashir?
+
+Cashir enables users to:
+
+- Request cash from the platform
+- Provide cash as a cash provider
+- Process agent-based transactions
+- Track transaction status in real-time
+- Utilize multiple payment channels
+
+## System Components
+
+### Cashir Applications
+
+Cashir applications represent requests for cash-related services. Each application includes:
+
+<ParamField path="uuid" type="string" required>
+  Unique identifier for the Cashir application
+</ParamField>
+
+<ParamField path="user_id" type="integer" required>
+  ID of the user creating the application
+</ParamField>
+
+<ParamField path="amount" type="string" required>
+  Amount of cash being requested or provided
+</ParamField>
+
+<ParamField path="tenor" type="string" required>
+  Time period or duration for the cash transaction
+</ParamField>
+
+<ParamField path="status" type="enum" required>
+  Application status: `PENDING`, `REJECTED`, `APPROVED`, `DISBURSED`
+</ParamField>
+
+<ParamField path="other_information" type="longText" required>
+  Additional details about the application
+</ParamField>
+
+<ParamField path="loan_history" type="longText" required>
+  Historical data for creditworthiness assessment
+</ParamField>
+
+### Cashir Transactions
+
+Transactions represent the actual movement of cash through the system. See [Cashir Transactions](/api/cashir/transactions) for detailed documentation.
+
+### Payment Channels
+
+Payment channels are the methods through which cash transactions are processed:
+
+<ParamField path="id" type="integer">
+  Unique identifier for the payment channel
+</ParamField>
+
+<ParamField path="name" type="string">
+  Name of the payment channel (e.g., "Bank Transfer", "Mobile Money", "Cash Pickup")
+</ParamField>
+
+<ParamField path="description" type="string">
+  Description of the payment channel and its capabilities
+</ParamField>
+
+<ParamField path="is_active" type="boolean" default="true">
+  Whether the payment channel is currently active and available for use
+</ParamField>
+
+<ParamField path="can_fund_wallet" type="boolean" default="false">
+  Whether this payment channel can be used to fund user wallets
+</ParamField>
+
+## Application Status Flow
+
+Cashir applications follow the same status lifecycle as loan applications:
+
+<Accordion title="Status: PENDING">
+Initial state when a Cashir application is submitted. The application is queued for review.
+</Accordion>
+
+<Accordion title="Status: APPROVED">
+Application has been reviewed and approved. Ready for processing but not yet executed.
+</Accordion>
+
+<Accordion title="Status: REJECTED">
+Application did not meet criteria and was rejected. This is a terminal state.
+</Accordion>
+
+<Accordion title="Status: DISBURSED">
+Cash has been successfully disbursed or the transaction has been completed. This is the final state for successful applications.
+</Accordion>
+
+## Transaction Types
+
+Cashir supports multiple transaction types:
+
+<ResponseField name="LOAN, RECEIVER" type="transaction_type">
+  Transaction related to loan receipt or cash receiver operations
+</ResponseField>
+
+<ResponseField name="PROVIDER" type="transaction_type">
+  Transaction where user is providing cash to the system
+</ResponseField>
+
+<ResponseField name="AGENT" type="transaction_type">
+  Transaction processed through an agent
+</ResponseField>
+
+<ResponseField name="OTHER" type="transaction_type" default>
+  Other types of cash transactions
+</ResponseField>
+
+## Use Cases
+
+### Cash Request
+Users can request cash to be delivered or made available for pickup through various payment channels.
+
+### Cash Provider
+Users with excess cash can provide liquidity to the system, potentially earning returns.
+
+### Agent Transactions
+Agents can facilitate cash transactions on behalf of users in areas with limited banking infrastructure.
+
+<Note>
+Cashir applications require the user to have completed their profile information, similar to loan applications.
+</Note>
+
+<Warning>
+All cash transactions are subject to verification and anti-fraud measures. Large transactions may require additional verification steps.
+</Warning>
+
+## Next Steps
+
+- [Cashir Transactions](/api/cashir/transactions) - Learn about creating and managing cash transactions
+- [Loans Overview](/api/loans/overview) - Understand how Cashir relates to the loan system

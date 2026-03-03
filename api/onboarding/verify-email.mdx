@@ -1,0 +1,143 @@
+---
+title: 'Verify Email Address'
+description: 'Verify user email address with a verification code'
+---
+
+## Overview
+
+This endpoint allows users to verify their email address using a 6-digit verification code sent to their email during registration. Email verification is the first step in the onboarding process.
+
+<Note>
+  This endpoint requires JWT authentication. The verification code is sent automatically during registration.
+</Note>
+
+## Endpoint
+
+```
+POST /api/email/verify
+```
+
+## Authentication
+
+This endpoint requires a valid JWT token in the Authorization header:
+
+```
+Authorization: Bearer {jwt_token}
+```
+
+## Request Body
+
+<ParamField body="code" type="string" required>
+  The 6-digit verification code sent to the user's email address
+</ParamField>
+
+## Request Example
+
+```bash
+curl -X POST https://api.rihsac.com/api/email/verify \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "123456"
+  }'
+```
+
+## Response
+
+### Success Response
+
+When email verification is successful:
+
+<ResponseField name="status" type="string">
+  Status of the request ("success")
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+<ResponseField name="data" type="string">
+  Additional data (usually empty)
+</ResponseField>
+
+```json
+{
+  "status": "success",
+  "message": "Email Verification Successful",
+  "data": ""
+}
+```
+
+### Error Response
+
+When verification fails:
+
+```json
+{
+  "status": "failure",
+  "message": "Unable to create account",
+  "error": ""
+}
+```
+
+## Implementation Details
+
+- The verification code is validated against the `activation_tokens` table
+- Upon successful verification:
+  - User's `email_verified` status is set to `true`
+  - User's `onboarding_stage` is updated to `UPDATE_PROFILE`
+  - The verification code is deleted from the database
+  - An activity log entry is created
+
+<Note>
+  Verification codes are generated as 6-digit random numbers (100000-999999)
+</Note>
+
+## Related Endpoints
+
+- [Resend Email Verification](/api/onboarding/verify-email#resend-verification-code) - Resend verification code
+- [Verify Phone Number](/api/onboarding/verify-phone) - Next step in onboarding
+
+## Resend Verification Code
+
+If users don't receive the verification code, they can request a new one:
+
+### Endpoint
+
+```
+POST /api/email/resend
+```
+
+### Authentication
+
+Requires JWT token.
+
+### Request Example
+
+```bash
+curl -X POST https://api.rihsac.com/api/email/resend \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
+```
+
+### Success Response
+
+```json
+{
+  "status": "success",
+  "message": "Email sent Successful",
+  "data": ""
+}
+```
+
+<Warning>
+  Users can only request a new verification code once per minute to prevent spam
+</Warning>
+
+## Error Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Email verification successful |
+| 400 | Invalid or expired verification code |
+| 401 | Unauthorized - Invalid or missing JWT token |
+| 429 | Too many resend requests (less than 1 minute since last request) |

@@ -1,0 +1,254 @@
+---
+title: 'Environment Setup'
+description: 'Configure your Rihsac API development environment'
+icon: 'gear'
+---
+
+## Overview
+
+This guide walks you through setting up your local development environment for the Rihsac API. The application is built with Laravel 8 and requires proper configuration of environment variables.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- PHP 7.3 or higher (PHP 8.0+ supported)
+- Composer
+- MySQL database server
+- A web server (Apache/Nginx) or Laravel's built-in server
+
+## Installation Steps
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the Rihsac API repository to your local machine:
+    
+    ```bash
+    git clone <repository-url>
+    cd rihsac-api
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    Install all required PHP packages using Composer:
+    
+    ```bash
+    composer install
+    ```
+    
+    This will install key dependencies including:
+    - Laravel Framework 8.x
+    - tymon/jwt-auth for authentication
+    - bavix/laravel-wallet for wallet functionality
+    - twilio/sdk for SMS functionality
+    - intervention/image for image processing
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    Copy the example environment file and configure your settings:
+    
+    ```bash
+    cp .env.example .env
+    ```
+    
+    Then edit the `.env` file with your configuration values.
+  </Step>
+
+  <Step title="Generate Application Key">
+    Generate a unique application key:
+    
+    ```bash
+    php artisan key:generate
+    ```
+  </Step>
+
+  <Step title="Run Database Migrations">
+    Create the database tables:
+    
+    ```bash
+    php artisan migrate
+    ```
+    
+    See the [Database Migrations](/guides/database-migrations) guide for more details.
+  </Step>
+
+  <Step title="Generate JWT Secret">
+    Generate the JWT secret key for authentication:
+    
+    ```bash
+    php artisan jwt:secret
+    ```
+    
+    This will automatically add `JWT_SECRET` to your `.env` file.
+  </Step>
+
+  <Step title="Start Development Server">
+    Launch the Laravel development server:
+    
+    ```bash
+    php artisan serve
+    ```
+    
+    Your API will be available at `http://localhost:8000`
+  </Step>
+</Steps>
+
+## Environment Variables
+
+### Application Configuration
+
+<CodeGroup>
+```bash Core Settings
+APP_NAME=Laravel
+APP_ENV=local
+APP_KEY=
+APP_DEBUG=true
+APP_URL=http://localhost
+```
+
+```bash Logging
+LOG_CHANNEL=stack
+LOG_LEVEL=debug
+```
+</CodeGroup>
+
+<Note>
+  The `APP_KEY` is automatically generated when you run `php artisan key:generate`. Never share this key publicly.
+</Note>
+
+### Database Configuration
+
+```bash
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=laravel
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+<Warning>
+  Ensure your MySQL server is running and the database specified in `DB_DATABASE` exists before running migrations.
+</Warning>
+
+### Cache & Session Configuration
+
+```bash
+BROADCAST_DRIVER=log
+CACHE_DRIVER=file
+FILESYSTEM_DRIVER=local
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=file
+SESSION_LIFETIME=120
+```
+
+### Redis Configuration (Optional)
+
+```bash
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+```
+
+<Note>
+  Redis is optional but recommended for production environments to improve caching and session performance.
+</Note>
+
+### Mail Configuration
+
+```bash
+MAIL_MAILER=smtp
+MAIL_HOST=mailhog
+MAIL_PORT=1025
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_ENCRYPTION=null
+MAIL_FROM_ADDRESS=null
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+<Note>
+  For local development, [Mailhog](https://github.com/mailhog/MailHog) is configured by default to catch outgoing emails. For production, configure your actual SMTP provider.
+</Note>
+
+### AWS Configuration (Optional)
+
+```bash
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=
+AWS_USE_PATH_STYLE_ENDPOINT=false
+```
+
+### Pusher Configuration (Optional)
+
+```bash
+PUSHER_APP_ID=
+PUSHER_APP_KEY=
+PUSHER_APP_SECRET=
+PUSHER_APP_CLUSTER=mt1
+
+MIX_PUSHER_APP_KEY="${PUSHER_APP_KEY}"
+MIX_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"
+```
+
+## JWT Configuration
+
+For JWT authentication setup, see the dedicated [JWT Configuration](/guides/jwt-configuration) guide.
+
+## Verification
+
+To verify your setup is correct:
+
+1. Check that the server is running:
+   ```bash
+   curl http://localhost:8000
+   ```
+
+2. Verify database connection:
+   ```bash
+   php artisan migrate:status
+   ```
+
+3. Test JWT configuration:
+   ```bash
+   php artisan jwt:secret --show
+   ```
+
+## Troubleshooting
+
+### Permission Issues
+
+If you encounter permission errors, ensure the storage and cache directories are writable:
+
+```bash
+chmod -R 775 storage bootstrap/cache
+```
+
+### Database Connection Failed
+
+Verify your database credentials and ensure MySQL is running:
+
+```bash
+mysql -u root -p
+```
+
+### JWT Secret Not Set
+
+If you see JWT-related errors, make sure you've generated the JWT secret:
+
+```bash
+php artisan jwt:secret
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Migrations" icon="database" href="/guides/database-migrations">
+    Learn about the database schema and how to manage migrations
+  </Card>
+  <Card title="JWT Configuration" icon="key" href="/guides/jwt-configuration">
+    Configure JWT authentication for secure API access
+  </Card>
+</CardGroup>

@@ -1,0 +1,190 @@
+---
+title: "Loan Applications"
+description: "Managing loan applications through the Rihsac API"
+---
+
+## Endpoints
+
+Based on the system structure, loan applications support the following operations:
+
+- **List Applications** - View all loan applications for a user
+- **Read Application** - Get details of a specific loan application
+- **Create Application** - Submit a new loan application
+- **Update Application** - Modify an existing loan application
+
+<Note>
+All loan application endpoints require authentication via JWT middleware.
+</Note>
+
+## Create Loan Application
+
+Submit a new loan application to the system.
+
+### Request Body
+
+<ParamField body="amount" type="string" required>
+  The requested loan amount. Stored as string to support precise decimal values.
+</ParamField>
+
+<ParamField body="location" type="string" required>
+  Geographic location where the loan will be processed. This may affect available loan products and terms.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  Three-letter currency code (e.g., USD, EUR, NGN, GHS)
+</ParamField>
+
+<ParamField body="other_information" type="object" required>
+  Additional information about the loan request. May include:
+  - Purpose of loan
+  - Requested repayment terms
+  - Additional documentation references
+  - Special considerations
+</ParamField>
+
+<ParamField body="loan_history" type="object" required>
+  Previous loan history or initial history entry. Used for tracking purposes and creditworthiness assessment.
+</ParamField>
+
+### Response
+
+<ResponseField name="uuid" type="string">
+  Unique identifier for the created loan application
+</ResponseField>
+
+<ResponseField name="user_id" type="integer">
+  ID of the authenticated user who submitted the application
+</ResponseField>
+
+<ResponseField name="amount" type="string">
+  Requested loan amount
+</ResponseField>
+
+<ResponseField name="location" type="string">
+  Geographic location for loan processing
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Currency code for the loan
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Initial status will be `PENDING`
+</ResponseField>
+
+<ResponseField name="other_information" type="object">
+  Additional information provided with the application
+</ResponseField>
+
+<ResponseField name="loan_history" type="object">
+  Loan history data
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  ISO 8601 timestamp of when the application was created
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 timestamp of when the application was last updated
+</ResponseField>
+
+## List Loan Applications
+
+Retrieve all loan applications for the authenticated user.
+
+### Response
+
+Returns an array of loan application objects with the same structure as the create response.
+
+<ResponseField name="data" type="array">
+  Array of loan application objects
+</ResponseField>
+
+## Read Loan Application
+
+Get details of a specific loan application by UUID.
+
+### Path Parameters
+
+<ParamField path="uuid" type="string" required>
+  The unique identifier of the loan application
+</ParamField>
+
+### Response
+
+Returns a single loan application object with full details.
+
+## Update Loan Application
+
+Update details of an existing loan application.
+
+<Warning>
+Applications can typically only be updated while in PENDING status. Once APPROVED, REJECTED, or DISBURSED, modifications may be restricted.
+</Warning>
+
+### Path Parameters
+
+<ParamField path="uuid" type="string" required>
+  The unique identifier of the loan application to update
+</ParamField>
+
+### Request Body
+
+Accepts the same parameters as the create endpoint. Only provided fields will be updated.
+
+<ParamField body="amount" type="string">
+  Update the requested loan amount
+</ParamField>
+
+<ParamField body="location" type="string">
+  Update the geographic location
+</ParamField>
+
+<ParamField body="currency" type="string">
+  Update the currency code
+</ParamField>
+
+<ParamField body="other_information" type="object">
+  Update additional information
+</ParamField>
+
+<ParamField body="loan_history" type="object">
+  Append to loan history (typically managed by the system)
+</ParamField>
+
+### Response
+
+Returns the updated loan application object.
+
+## Application Status Reference
+
+<ResponseField name="PENDING" type="status">
+  Application has been submitted and is awaiting review
+</ResponseField>
+
+<ResponseField name="REJECTED" type="status">
+  Application was reviewed and not approved
+</ResponseField>
+
+<ResponseField name="APPROVED" type="status">
+  Application was approved but funds not yet disbursed
+</ResponseField>
+
+<ResponseField name="DISBURSED" type="status">
+  Loan funds have been disbursed to the user
+</ResponseField>
+
+## Prerequisites
+
+Before applying for a loan, users should complete their profile information:
+
+- Guarantor information
+- Residential information
+- Employment information
+- Banking information
+
+These profile sections provide the necessary data for loan application review and approval.
+
+<Note>
+Reference the database schema at `database/migrations/2021_11_16_163208_create_loan_applications_table.php` for the complete data structure.
+</Note>

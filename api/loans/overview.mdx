@@ -1,0 +1,95 @@
+---
+title: "Loans Overview"
+description: "Understanding the loan application system in Rihsac API"
+---
+
+## Introduction
+
+The Rihsac Loans API allows users to apply for loans and track their application status through various stages. The loan system supports multiple currencies and locations, enabling flexible lending operations.
+
+## Loan Application Lifecycle
+
+Loan applications progress through four distinct statuses:
+
+1. **PENDING** - Initial state when a loan application is submitted
+2. **APPROVED** - Application has been reviewed and approved
+3. **REJECTED** - Application was not approved
+4. **DISBURSED** - Approved loan funds have been disbursed to the user
+
+<Note>
+Each loan application is uniquely identified by both an auto-incrementing `id` and a `uuid` for secure external references.
+</Note>
+
+## Key Features
+
+- Multi-currency support for international lending
+- Location-based loan processing
+- Comprehensive loan history tracking
+- Status-based workflow management
+- User-specific loan applications
+
+## Data Structure
+
+Each loan application contains:
+
+<ParamField path="uuid" type="string" required>
+  Unique identifier for the loan application (UUID format)
+</ParamField>
+
+<ParamField path="user_id" type="integer" required>
+  ID of the user submitting the loan application
+</ParamField>
+
+<ParamField path="amount" type="string" required>
+  Requested loan amount
+</ParamField>
+
+<ParamField path="location" type="string" required>
+  Geographic location for loan processing
+</ParamField>
+
+<ParamField path="currency" type="string" required>
+  Currency code for the loan (e.g., USD, EUR, NGN)
+</ParamField>
+
+<ParamField path="status" type="enum" required>
+  Current status of the loan application. One of: `PENDING`, `REJECTED`, `APPROVED`, `DISBURSED`
+</ParamField>
+
+<ParamField path="other_information" type="longText" required>
+  Additional information about the loan application (JSON or text format)
+</ParamField>
+
+<ParamField path="loan_history" type="longText" required>
+  Historical data and audit trail for the loan application
+</ParamField>
+
+<ParamField path="created_at" type="timestamp">
+  Timestamp when the loan application was created
+</ParamField>
+
+<ParamField path="updated_at" type="timestamp">
+  Timestamp when the loan application was last updated
+</ParamField>
+
+## Status Transitions
+
+<Accordion title="PENDING → APPROVED">
+When a loan application is reviewed and meets all lending criteria, it transitions from PENDING to APPROVED status. This indicates the loan has been authorized but funds have not yet been disbursed.
+</Accordion>
+
+<Accordion title="PENDING → REJECTED">
+If a loan application does not meet lending criteria or fails verification checks, it transitions from PENDING to REJECTED status. This is a terminal state.
+</Accordion>
+
+<Accordion title="APPROVED → DISBURSED">
+Once an approved loan's funds are successfully transferred to the user, the status changes to DISBURSED. This represents the final state of a successful loan application.
+</Accordion>
+
+<Warning>
+The loan application status flow is unidirectional. Once a loan is marked as REJECTED or DISBURSED, it cannot be reversed.
+</Warning>
+
+## Next Steps
+
+- [Loan Applications](/api/loans/application) - Learn how to create and manage loan applications

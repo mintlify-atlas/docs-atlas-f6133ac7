@@ -1,0 +1,279 @@
+---
+title: 'Profile Management'
+description: 'Learn how users manage their complete profile including guarantor, employment, residential, and banking information'
+---
+
+## Overview
+
+The Rihsac API provides comprehensive profile management capabilities that allow users to maintain detailed personal, financial, and reference information. Profile data is organized into four distinct categories, each stored in separate database tables and managed through dedicated endpoints.
+
+## Profile Categories
+
+User profiles consist of four main information categories:
+
+<Steps>
+  <Step title="Guarantor Information">
+    Reference contact who can vouch for the user during loan applications.
+    
+    **Endpoint**: `POST /api/profile/guarantor`
+    
+    **Read**: `GET /api/profile/guarantor`
+    
+    **Required Fields**:
+    - `firstname` - Guarantor's first name
+    - `lastname` - Guarantor's last name
+    - `phone_number` - Contact number
+    - `email` - Email address
+    - `relationship` - Relationship to user (integer reference to settings)
+  </Step>
+
+  <Step title="Employment Information">
+    Details about user's employment status and financial capacity.
+    
+    **Endpoint**: `POST /api/profile/employment`
+    
+    **Read**: `GET /api/profile/employment`
+    
+    **Required Fields**:
+    - `employment_status` - Current employment status (integer reference)
+    - `number_of_dependents` - Number of financial dependents
+    - `monthly_income` - Monthly income amount
+    - `monthly_savings` - Average monthly savings
+    - `monthly_expense` - Average monthly expenses
+  </Step>
+
+  <Step title="Residential Information">
+    Living situation and housing details.
+    
+    **Endpoint**: `POST /api/profile/residential`
+    
+    **Read**: `GET /api/profile/residential`
+    
+    **Required Fields**:
+    - `apartment_type` - Type of residence (integer reference)
+    - `ownership` - Ownership status (integer reference to settings)
+  </Step>
+
+  <Step title="Banking Information">
+    Bank account details for disbursements and collections.
+    
+    **Endpoint**: `POST /api/profile/banking`
+    
+    **Read**: `GET /api/profile/banking`
+    
+    **Required Fields**:
+    - `bank_name` - Name of the bank
+    - `account_number` - Bank account number
+    - `account_name` - Account holder name
+    - `bvn` - Bank Verification Number
+  </Step>
+</Steps>
+
+## Data Models
+
+### Guarantor Information
+
+Stored in the `guarantor_information` table:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | Integer | Primary key |
+| `uuid` | UUID | Unique identifier |
+| `user_id` | Integer | Foreign key to users table |
+| `firstname` | String | Guarantor's first name |
+| `lastname` | String | Guarantor's last name |
+| `phone_number` | String | Contact number |
+| `email` | String | Email address |
+| `relationship` | Integer | Relationship type reference |
+
+**Model**: `app/Models/GuarantorInformation.php`
+
+**Relationship**:
+```php
+// User has one guarantor
+$user->guarantor()
+
+// Guarantor belongs to user
+$guarantor->user()
+```
+
+### Employment Information
+
+Stored in the `employment_information` table:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | Integer | Primary key |
+| `uuid` | UUID | Unique identifier |
+| `user_id` | Integer | Foreign key to users table |
+| `employment_status` | Integer | Employment status reference |
+| `number_of_dependents` | Integer | Number of dependents |
+| `monthly_income` | String | Monthly income amount |
+| `monthly_savings` | String | Monthly savings amount |
+| `monthly_expense` | String | Monthly expense amount |
+
+**Model**: `app/Models/EmploymentInformation.php`
+
+<Info>
+  Financial amounts (`monthly_income`, `monthly_savings`, `monthly_expense`) are stored as strings to preserve precision and formatting.
+</Info>
+
+### Residential Information
+
+Stored in the `residential_information` table:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | Integer | Primary key |
+| `uuid` | UUID | Unique identifier |
+| `user_id` | Integer | Foreign key to users table |
+| `apartment_type` | Integer | Apartment type reference |
+| `ownership` | Integer | Ownership status reference |
+
+**Model**: `app/Models/ResidentialInformation.php`
+
+### Banking Information
+
+Stored in the `bank_information` table:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | Integer | Primary key |
+| `uuid` | UUID | Unique identifier |
+| `user_id` | Integer | Foreign key to users table |
+| `bank_name` | String | Bank name |
+| `account_number` | String | Account number |
+| `account_name` | String | Account holder name |
+| `bvn` | String | Bank Verification Number |
+
+**Model**: `app/Models/BankInformation.php`
+
+<Note>
+  The BVN (Bank Verification Number) is a Nigerian banking identifier used for KYC verification.
+</Note>
+
+## Additional Profile Features
+
+### Profile Picture Upload
+
+**Endpoint**: `POST /api/profile/picture`
+
+**Requirements**:
+- Image file only (jpg, png, jpeg, gif, svg)
+- Maximum size: 2048 KB (2 MB)
+- Automatically resized to 150x150 pixels
+
+**Implementation**:
+```php
+// Stored in storage/avatars directory
+// Processed with Intervention Image library
+// Saved to user.avatar field
+```
+
+### Document Upload
+
+**Endpoint**: `POST /api/profile/document`
+
+**Purpose**: Upload identity verification documents
+
+**Fields**:
+- `document` - File upload
+- `upload_type` - Type of document
+- `id_card_type` - ID card type
+- `document_name` - Document name/description
+
+**Storage**:
+- Stored in `document_uploads` table
+- Files saved to `storage/document` directory
+- Supports `updateOrCreate` for replacing existing documents
+
+## Authentication & Authorization
+
+All profile endpoints require JWT authentication:
+
+```bash
+Authorization: Bearer {jwt_token}
+```
+
+Additional validation:
+- User must have verified email (`email` not null)
+- User must have verified phone number (`phone_number` not null)
+
+<Note>
+  Profile operations will fail if the user hasn't completed email and phone verification during onboarding.
+</Note>
+
+## Settings Integration
+
+Several profile fields reference the `settings` table for enumerated values:
+
+- **Employment Status**: Predefined employment categories
+- **Relationship**: Guarantor relationship types
+- **Apartment Type**: Residential property types
+- **Ownership**: Property ownership status
+
+These references allow:
+- Consistent data entry
+- Easy localization
+- Centralized value management
+
+## Activity Logging
+
+All profile updates are tracked in the `activity_logs` table:
+
+| Action | Log Type | Description |
+|--------|----------|-------------|
+| Profile picture upload | `AVATAR` | Avatar updated |
+| Document upload | `DOCUMENT` | Document uploaded |
+| Username update | `USERNAME` | Username changed |
+| Transaction PIN | `PIN` | PIN updated |
+| Email resend | `EMAIL_CODE` | Verification code resent |
+| SMS resend | `PHONE_NUMBER` | SMS code resent |
+
+## Implementation Reference
+
+Profile management is implemented across multiple files:
+
+**Controllers**:
+- `app/Http/Controllers/Api/Profile/ProfileController.php` - Main profile operations
+- `app/Http/Controllers/Api/Profile/GuarantorController.php` - Guarantor data
+- `app/Http/Controllers/Api/Profile/EmploymentController.php` - Employment data
+- `app/Http/Controllers/Api/Profile/ResidentialController.php` - Residential data
+- `app/Http/Controllers/Api/Profile/BankController.php` - Banking data
+
+**Services**:
+- `app/Services/Profile/ProfileService.php` - Business logic
+
+**Models**:
+- `app/Models/User.php`
+- `app/Models/GuarantorInformation.php`
+- `app/Models/EmploymentInformation.php`
+- `app/Models/ResidentialInformation.php`
+- `app/Models/BankInformation.php`
+
+## Best Practices
+
+<Accordion title="Validate User Verification Status">
+  Always check that users have completed email and phone verification before allowing profile updates. All profile service methods include this validation.
+</Accordion>
+
+<Accordion title="Use UUID for Record Tracking">
+  Each profile record includes a UUID in addition to the auto-incrementing ID. Use UUIDs for external references and API responses.
+</Accordion>
+
+<Accordion title="Implement Proper Error Handling">
+  Service methods return `null` on failure. Controllers should check return values and provide appropriate error responses.
+</Accordion>
+
+<Accordion title="Protect Sensitive Banking Information">
+  Banking information, especially BVN, should be handled with strict security measures. Consider encryption at rest and in transit.
+</Accordion>
+
+<Accordion title="Maintain Activity Audit Trail">
+  Use the ActivityLog system consistently to track all profile changes for security and compliance purposes.
+</Accordion>
+
+## Related Concepts
+
+- [User Onboarding](/concepts/user-onboarding) - Initial account setup
+- [Wallet System](/concepts/wallet-system) - Financial operations requiring complete profile

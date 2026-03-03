@@ -1,0 +1,194 @@
+---
+title: 'Create Transaction PIN'
+description: 'Set up a 4-digit transaction PIN for secure operations'
+---
+
+## Overview
+
+This endpoint allows users to create a 4-digit transaction PIN that will be used to authorize sensitive operations such as transfers, withdrawals, and loan applications.
+
+<Note>
+  This endpoint requires JWT authentication. Users must have verified their email and phone number before creating a transaction PIN.
+</Note>
+
+## Endpoint
+
+```
+POST /api/transaction-pin
+```
+
+## Authentication
+
+This endpoint requires a valid JWT token in the Authorization header:
+
+```
+Authorization: Bearer {jwt_token}
+```
+
+## Request Body
+
+<ParamField body="transaction_pin" type="string" required>
+  The 4-digit transaction PIN (must be exactly 4 digits)
+</ParamField>
+
+<ParamField body="transaction_pin_confirmation" type="string" required>
+  Confirmation of the transaction PIN (must match `transaction_pin`)
+</ParamField>
+
+## Validation Rules
+
+- PIN must be exactly 4 digits
+- PIN and confirmation must match
+- PIN is securely hashed before storage
+
+<Warning>
+  The transaction PIN is stored securely and cannot be retrieved. Users must remember their PIN or reset it through the appropriate channels.
+</Warning>
+
+## Request Example
+
+```bash
+curl -X POST https://api.rihsac.com/api/transaction-pin \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "transaction_pin": "1234",
+    "transaction_pin_confirmation": "1234"
+  }'
+```
+
+## Response
+
+### Success Response
+
+When transaction PIN is created successfully:
+
+<ResponseField name="status" type="string">
+  Status of the request ("success")
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+<ResponseField name="data" type="string">
+  Additional data (usually empty)
+</ResponseField>
+
+```json
+{
+  "status": "success",
+  "message": "Transaction pin updated successfully",
+  "data": ""
+}
+```
+
+### Error Response
+
+When PIN creation fails:
+
+```json
+{
+  "status": "failure",
+  "message": "Invalid password format",
+  "error": {
+    "transaction_pin": [
+      "The transaction pin confirmation does not match."
+    ]
+  }
+}
+```
+
+### Validation Error Response
+
+When validation fails:
+
+```json
+{
+  "status": "failure",
+  "message": "Invalid password format",
+  "error": {
+    "transaction_pin": [
+      "The transaction pin must not be greater than 4 characters."
+    ]
+  }
+}
+```
+
+## Implementation Details
+
+### Prerequisites
+
+Before creating a transaction PIN, the user must have:
+
+1. Verified email address (`email_verified` = true)
+2. Verified phone number (`phone_number` is not null)
+
+If these conditions are not met, the API returns an error:
+
+```json
+{
+  "status": "failure",
+  "message": "Unable to update transaction pin",
+  "error": ""
+}
+```
+
+### Processing Steps
+
+1. Validates JWT token and retrieves authenticated user
+2. Checks that email and phone number are verified
+3. Validates PIN format and confirmation
+4. Hashes the transaction PIN securely
+5. Updates user record with hashed PIN
+6. Creates activity log entry with type `PIN`
+
+<Note>
+  The transaction PIN is automatically hashed using Laravel's secure hashing mechanism before storage
+</Note>
+
+## Security Considerations
+
+- Transaction PINs are never stored in plain text
+- PINs are hashed using industry-standard algorithms
+- The `transaction_pin` field is hidden in API responses (defined in User model's `$hidden` array)
+- Activity logs track all PIN creation events for audit purposes
+
+## Common Use Cases
+
+### Initial Setup
+
+Users create their transaction PIN during the onboarding process after verifying their email and phone number.
+
+### PIN Requirements
+
+- Must be exactly 4 digits
+- Should be memorable but not easily guessable
+- Should not use sequential numbers (e.g., 1234) or repeated digits (e.g., 1111)
+
+<Warning>
+  While the API validates the PIN format, consider implementing additional client-side validation to prevent weak PINs like "0000" or "1234".
+</Warning>
+
+## Error Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Transaction PIN created successfully |
+| 400 | Unable to update PIN (prerequisites not met) |
+| 401 | Unauthorized - Invalid or missing JWT token |
+| 422 | Validation error - Invalid PIN format or mismatch |
+
+## Related Endpoints
+
+- [Verify Email](/api/onboarding/verify-email) - Required before PIN creation
+- [Verify Phone](/api/onboarding/verify-phone) - Required before PIN creation
+- [Create Username](/api/onboarding/username) - Optional onboarding step
+
+## Best Practices
+
+1. **Client Implementation**: Always validate PIN format client-side before sending the request
+2. **User Education**: Inform users about PIN security and avoiding common patterns
+3. **Error Handling**: Provide clear error messages when PIN creation fails
+4. **Rate Limiting**: Consider implementing rate limiting to prevent brute force attacks
+5. **PIN Reset**: Implement a secure PIN reset mechanism for users who forget their PIN

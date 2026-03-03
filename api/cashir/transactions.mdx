@@ -1,0 +1,265 @@
+---
+title: "Cashir Transactions"
+description: "Managing cash transactions through the Rihsac Cashir API"
+---
+
+## Introduction
+
+Cashir transactions represent the actual movement of cash within the Rihsac platform. Each transaction is tracked through multiple status states and can be processed through various payment channels.
+
+## Transaction Operations
+
+Based on the system structure, Cashir supports:
+
+- **Create Order** - Initialize a new cash transaction
+- **Request Cash** - Submit a cash request
+- **Read Transaction** - Get transaction details
+- **Update Transaction** - Modify transaction information
+- **Delete Transaction** - Cancel a transaction
+
+<Note>
+All Cashir endpoints require authentication via JWT middleware.
+</Note>
+
+## Create Transaction
+
+Initiate a new cash transaction in the system.
+
+### Request Body
+
+<ParamField body="amount" type="string" required>
+  Amount of cash for the transaction. Stored as string for precise decimal handling.
+</ParamField>
+
+<ParamField body="location" type="string" required>
+  Geographic location where the transaction will occur
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  Three-letter currency code (e.g., USD, EUR, NGN, GHS)
+</ParamField>
+
+<ParamField body="payment_channel_id" type="integer" required>
+  ID of the payment channel to use for this transaction. Must reference an active payment channel.
+</ParamField>
+
+<ParamField body="transaction_type" type="enum" default="OTHER">
+  Type of transaction. One of:
+  - `LOAN, RECEIVER` - Loan or cash receiver transaction
+  - `PROVIDER` - Cash provider transaction
+  - `AGENT` - Agent-facilitated transaction
+  - `OTHER` - Other transaction types
+</ParamField>
+
+<ParamField body="other_information" type="object" required>
+  Additional transaction details such as:
+  - Recipient information
+  - Transaction notes
+  - Special instructions
+  - Metadata
+</ParamField>
+
+### Response
+
+<ResponseField name="uuid" type="string">
+  Unique identifier for the transaction
+</ResponseField>
+
+<ResponseField name="user_id" type="integer">
+  ID of the user who initiated the transaction
+</ResponseField>
+
+<ResponseField name="amount" type="string">
+  Transaction amount
+</ResponseField>
+
+<ResponseField name="location" type="string">
+  Transaction location
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Currency code
+</ResponseField>
+
+<ResponseField name="payment_channel_id" type="integer">
+  ID of the payment channel being used
+</ResponseField>
+
+<ResponseField name="transaction_type" type="string">
+  Type of the transaction
+</ResponseField>
+
+<ResponseField name="paymentReference" type="string" nullable>
+  Reference number from the payment channel (populated after processing)
+</ResponseField>
+
+<ResponseField name="transaction_ref" type="string" nullable>
+  Internal transaction reference (UUID format)
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Initial status will be `PENDING`
+</ResponseField>
+
+<ResponseField name="other_information" type="object">
+  Additional transaction information
+</ResponseField>
+
+<ResponseField name="payment_channel_status" type="string" nullable>
+  Status information from the payment channel provider
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  ISO 8601 timestamp of transaction creation
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 timestamp of last update
+</ResponseField>
+
+## Transaction Status Flow
+
+Cashir transactions progress through a comprehensive status lifecycle:
+
+<Accordion title="Status: PENDING">
+Initial state when a transaction is created. The system is preparing to process the transaction through the selected payment channel.
+</Accordion>
+
+<Accordion title="Status: CONFIRMED">
+The transaction has been confirmed and is being processed. Payment channel integration has acknowledged the transaction.
+</Accordion>
+
+<Accordion title="Status: COMPLETED">
+The transaction has been successfully completed and cash has been transferred. This is the final state for successful transactions.
+</Accordion>
+
+<Accordion title="Status: FAILED">
+The transaction failed during processing. This could be due to payment channel issues, insufficient funds, or technical errors.
+</Accordion>
+
+<Accordion title="Status: REJECTED">
+The transaction was rejected during validation or review. This could be due to fraud checks or policy violations.
+</Accordion>
+
+<Accordion title="Status: CANCELED">
+The transaction was canceled by the user or system before completion.
+</Accordion>
+
+## Read Transaction
+
+Retrieve details of a specific transaction.
+
+### Path Parameters
+
+<ParamField path="uuid" type="string" required>
+  The unique identifier of the transaction
+</ParamField>
+
+### Response
+
+Returns a complete transaction object with all fields including payment channel status and references.
+
+## Update Transaction
+
+Update transaction information or status.
+
+<Warning>
+Certain fields like `amount` and `payment_channel_id` may not be editable once the transaction is confirmed or in progress.
+</Warning>
+
+### Path Parameters
+
+<ParamField path="uuid" type="string" required>
+  The unique identifier of the transaction to update
+</ParamField>
+
+### Request Body
+
+<ParamField body="other_information" type="object">
+  Update additional transaction information
+</ParamField>
+
+<ParamField body="payment_channel_status" type="string">
+  Update status from payment channel (typically system-managed)
+</ParamField>
+
+## Delete Transaction
+
+Cancel a pending transaction.
+
+### Path Parameters
+
+<ParamField path="uuid" type="string" required>
+  The unique identifier of the transaction to delete/cancel
+</ParamField>
+
+<Warning>
+Only transactions in PENDING status can typically be deleted. Confirmed or completed transactions may require a reversal process instead.
+</Warning>
+
+## Payment Channels
+
+Before creating a transaction, you need to select an appropriate payment channel. Payment channels determine how the cash transaction will be processed.
+
+### Channel Properties
+
+<ResponseField name="id" type="integer">
+  Payment channel identifier to use in transaction requests
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Display name of the payment channel
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Details about the payment channel's capabilities and requirements
+</ResponseField>
+
+<ResponseField name="is_active" type="boolean">
+  Whether the channel is currently available for use
+</ResponseField>
+
+<ResponseField name="can_fund_wallet" type="boolean">
+  Whether this channel supports wallet funding operations
+</ResponseField>
+
+<Note>
+Always verify that a payment channel is active before using it in a transaction request.
+</Note>
+
+## Transaction References
+
+Transactions include two types of references:
+
+### Payment Reference
+The `paymentReference` field contains the reference number provided by the external payment channel. This is used to track the transaction with the payment provider and for reconciliation purposes.
+
+### Transaction Reference
+The `transaction_ref` field contains an internal UUID reference generated by the Rihsac system for additional tracking and security.
+
+## Error Handling
+
+<ResponseField name="FAILED" type="status">
+  Check the `payment_channel_status` field for specific error details from the payment provider
+</ResponseField>
+
+<ResponseField name="REJECTED" type="status">
+  Review the `other_information` field for rejection reasons
+</ResponseField>
+
+## Best Practices
+
+1. Always check payment channel availability before creating transactions
+2. Store the transaction UUID for future reference and status checks
+3. Monitor the `payment_channel_status` field for updates from payment providers
+4. Implement polling or webhooks to track transaction status changes
+5. Handle all possible transaction statuses in your application logic
+
+<Note>
+Reference the database schema at `database/migrations/2021_11_17_042548_create_cashir_transactions_table.php` for the complete transaction data structure.
+</Note>
+
+## Related Resources
+
+- [Cashir Overview](/api/cashir/overview) - Learn about the Cashir system
+- [Payment Channels](/api/cashir/overview#payment-channels) - Understanding payment channel options

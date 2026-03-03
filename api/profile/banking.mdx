@@ -1,0 +1,195 @@
+---
+title: 'Banking Information'
+api: 'POST https://api.rihsac.com/api/profile/banking'
+description: 'Store or update banking information for the authenticated user'
+---
+
+## Authentication
+
+This endpoint requires JWT authentication. Include the bearer token in the Authorization header.
+
+```bash
+Authorization: Bearer {token}
+```
+
+## Request Body
+
+<ParamField body="bank_id" type="integer" required>
+  Bank ID (must exist in banks table)
+</ParamField>
+
+<ParamField body="account_name" type="string" required>
+  Account holder name (max 100 characters)
+</ParamField>
+
+<ParamField body="account_number" type="string" required>
+  Bank account number (max 10 digits)
+</ParamField>
+
+<ParamField body="bvn" type="string" required>
+  Bank Verification Number (max 11 digits)
+</ParamField>
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status: "success" or "failure"
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Response message describing the result
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Empty on successful store operation
+</ResponseField>
+
+<Expandable title="Success Response Example">
+
+```json
+{
+  "status": "success",
+  "message": "Bank information update successful",
+  "data": {}
+}
+```
+
+</Expandable>
+
+<Expandable title="Error Response Example">
+
+```json
+{
+  "status": "failure",
+  "message": "Validation errors",
+  "data": {
+    "bank_id": ["The bank id field is required."],
+    "bvn": ["The bvn must be a valid number."]
+  }
+}
+```
+
+</Expandable>
+
+## Code Example
+
+```bash cURL
+curl -X POST https://api.rihsac.com/api/profile/banking \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bank_id": 1,
+    "account_name": "John Doe",
+    "account_number": "0123456789",
+    "bvn": "22123456789"
+  }'
+```
+
+---
+
+# Get Banking Information
+
+<api method="GET" endpoint="https://api.rihsac.com/api/profile/banking" />
+
+Retrieve the banking information for the authenticated user.
+
+## Authentication
+
+This endpoint requires JWT authentication. Include the bearer token in the Authorization header.
+
+```bash
+Authorization: Bearer {token}
+```
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status: "success" or "failure"
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Response message describing the result
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Banking information object
+  
+  <Expandable title="data properties">
+    <ResponseField name="id" type="integer">
+      Unique bank record ID
+    </ResponseField>
+    
+    <ResponseField name="uuid" type="string">
+      Unique identifier (UUID v4)
+    </ResponseField>
+    
+    <ResponseField name="user_id" type="integer">
+      Associated user ID
+    </ResponseField>
+    
+    <ResponseField name="bank_name" type="string">
+      Bank name
+    </ResponseField>
+    
+    <ResponseField name="account_name" type="string">
+      Account holder name
+    </ResponseField>
+    
+    <ResponseField name="account_number" type="string">
+      Bank account number
+    </ResponseField>
+    
+    <ResponseField name="bvn" type="string">
+      Bank Verification Number
+    </ResponseField>
+    
+    <ResponseField name="created_at" type="string">
+      Timestamp when record was created
+    </ResponseField>
+    
+    <ResponseField name="updated_at" type="string">
+      Timestamp when record was last updated
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<Expandable title="Success Response Example">
+
+```json
+{
+  "status": "success",
+  "message": "Bank information retrieved successful",
+  "data": {
+    "id": 1,
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "user_id": 123,
+    "bank_name": "First Bank of Nigeria",
+    "account_name": "John Doe",
+    "account_number": "0123456789",
+    "bvn": "22123456789",
+    "created_at": "2024-01-15T10:30:00.000000Z",
+    "updated_at": "2024-01-15T10:30:00.000000Z"
+  }
+}
+```
+
+</Expandable>
+
+<Expandable title="Error Response Example">
+
+```json
+{
+  "status": "failure",
+  "message": "Unable to get bank information.",
+  "data": {}
+}
+```
+
+</Expandable>
+
+## Code Example
+
+```bash cURL
+curl -X GET https://api.rihsac.com/api/profile/banking \
+  -H "Authorization: Bearer {token}"
+```

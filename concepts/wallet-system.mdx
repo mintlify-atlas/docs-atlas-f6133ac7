@@ -1,0 +1,378 @@
+---
+title: 'Wallet System'
+description: 'Understand the integrated wallet system powered by Laravel Wallet for managing user balances and transactions'
+---
+
+## Overview
+
+The Rihsac API integrates the [bavix/laravel-wallet](https://github.com/bavix/laravel-wallet) package (version ^6.2) to provide comprehensive wallet functionality for users. This system enables balance management, deposits, withdrawals, and transaction tracking.
+
+## Integration
+
+The wallet system is integrated directly into the User model through the `HasWallet` trait:
+
+```php
+use Bavix\Wallet\Traits\HasWallet;
+use Bavix\Wallet\Interfaces\Wallet;
+
+class User extends Authenticatable implements JWTSubject, Wallet
+{
+    use HasApiTokens, HasFactory, Notifiable, HasWallet;
+    
+    // User model implementation
+}
+```
+
+**Location**: `app/Models/User.php:10,19`
+
+<Info>
+  By implementing the `Wallet` interface and using the `HasWallet` trait, every user automatically receives a wallet upon account creation.
+</Info>
+
+## Core Wallet Features
+
+The Laravel Wallet package provides users with the following capabilities:
+
+### Balance Management
+
+```php
+// Get current balance
+$user->balance; // Returns integer (cents/kobo)
+
+// Get formatted balance
+$user->balanceFloat; // Returns decimal (dollars/naira)
+
+// Check if user can withdraw amount
+$user->canWithdraw($amount); // Returns boolean
+```
+
+### Deposits
+
+```php
+// Add funds to wallet
+$user->deposit($amount, $meta = null, $confirmed = true);
+
+// Deposit with metadata
+$user->deposit(1000, [
+    'description' => 'Loan disbursement',
+    'loan_id' => 123
+]);
+```
+
+### Withdrawals
+
+```php
+// Withdraw funds from wallet
+$user->withdraw($amount, $meta = null, $confirmed = true);
+
+// Withdraw with metadata
+$user->withdraw(500, [
+    'description' => 'Loan repayment',
+    'loan_id' => 123
+]);
+```
+
+<Note>
+  All amounts are stored as integers in the smallest currency unit (e.g., kobo for Naira, cents for USD) to avoid floating-point precision issues.
+</Note>
+
+### Transfers
+
+```php
+// Transfer between users
+$sender->transfer($recipient, $amount, $meta = null);
+
+// Transfer with metadata
+$user->transfer($anotherUser, 1000, [
+    'description' => 'Peer-to-peer transfer'
+]);
+```
+
+### Force Operations
+
+```php
+// Force withdraw (allows negative balance)
+$user->forceWithdraw($amount, $meta = null);
+
+// Check if balance is negative
+$user->balance < 0;
+```
+
+## Transaction History
+
+The wallet package automatically tracks all transactions:
+
+### Retrieving Transactions
+
+```php
+// Get all transactions
+$user->transactions;
+
+// Get specific transaction types
+$user->transactions()->where('type', 'deposit')->get();
+$user->transactions()->where('type', 'withdraw')->get();
+
+// Get recent transactions
+$user->transactions()->latest()->take(10)->get();
+```
+
+### Transaction Structure
+
+Each transaction record includes:
+
+| Field | Description |
+|-------|-------------|
+| `payable_type` | Model class (User) |
+| `payable_id` | User ID |
+| `type` | Transaction type (deposit/withdraw) |
+| `amount` | Amount in smallest unit |
+| `confirmed` | Confirmation status |
+| `meta` | JSON metadata |
+| `uuid` | Unique transaction identifier |
+
+## Payment Channels Integration
+
+The system includes a `payment_channels` table that tracks funding sources:
+
+**Table**: `payment_channels`
+
+**Key Field**:
+- `can_fund_wallet` (Boolean) - Indicates if the channel can add funds to wallets
+
+**Location**: `database/migrations/2021_11_16_173332_create_payment_channels_table.php:21`
+
+<Info>
+  Payment channels allow you to control which funding sources (bank transfer, card, etc.) can be used to add money to user wallets.
+</Info>
+
+## Transaction PIN Security
+
+Wallet operations requiring user authorization should validate the transaction PIN:
+
+```php
+// Transaction PIN stored in users table
+$user->transaction_pin; // Hashed 4-digit PIN
+
+// Validation example
+if (Hash::check($request->pin, $user->transaction_pin)) {
+    // Proceed with wallet operation
+    $user->withdraw($amount);
+}
+```
+
+**Security Features**:
+- PIN is automatically hidden in API responses
+- Stored as hashed value
+- Maximum 4 digits
+- Required confirmation during creation
+
+<Note>
+  Always validate the transaction PIN before executing sensitive wallet operations like withdrawals and transfers.
+</Note>
+
+## Wallet Operations Flow
+
+<Steps>
+  <Step title="User Initiates Operation">
+    User requests a wallet operation (deposit, withdraw, transfer) through the API.
+  </Step>
+
+  <Step title="Validate Transaction PIN">
+    System validates the provided transaction PIN against the stored hash.
+  </Step>
+
+  <Step title="Check Balance (For Withdrawals)">
+    System verifies sufficient balance using `canWithdraw()` method.
+  </Step>
+
+  <Step title="Execute Operation">
+    Wallet operation is executed with appropriate metadata for tracking.
+  </Step>
+
+  <Step title="Log Transaction">
+    Transaction is automatically recorded in the transactions table with UUID.
+  </Step>
+
+  <Step title="Update Balance">
+    User's wallet balance is updated atomically.
+  </Step>
+</Steps>
+
+## Database Schema
+
+The Laravel Wallet package creates these tables:
+
+### wallets
+- `holder_type` - Model class (User)
+- `holder_id` - User ID
+- `name` - Wallet name (default: 'default')
+- `slug` - Wallet slug
+- `balance` - Current balance (integer)
+- `decimal_places` - Decimal precision
+
+### transactions
+- `payable_type` - Model class
+- `payable_id` - User ID
+- `wallet_id` - Associated wallet
+- `type` - deposit/withdraw
+- `amount` - Transaction amount
+- `confirmed` - Confirmation status
+- `meta` - JSON metadata
+- `uuid` - Unique identifier
+
+### transfers
+- `from_type` & `from_id` - Source user
+- `to_type` & `to_id` - Destination user
+- `deposit_id` - Related deposit transaction
+- `withdraw_id` - Related withdrawal transaction
+- `discount` - Transfer discount/fee
+- `fee` - Transfer fee
+- `uuid` - Unique identifier
+
+## Best Practices
+
+<Accordion title="Always Use Integer Amounts Internally">
+  Work with amounts in the smallest currency unit (kobo/cents) to avoid floating-point arithmetic issues. Convert to decimal only for display.
+  
+  ```php
+  // Good
+  $user->deposit(1000); // 1000 kobo = 10 naira
+  
+  // Avoid
+  $user->deposit(10.00); // Risky with floats
+  ```
+</Accordion>
+
+<Accordion title="Include Metadata for Audit Trail">
+  Always attach descriptive metadata to transactions for tracking and debugging:
+  
+  ```php
+  $user->deposit(5000, [
+      'source' => 'loan_disbursement',
+      'loan_application_id' => $loanId,
+      'reference' => $paymentReference,
+      'description' => 'Loan #' . $loanId . ' disbursement'
+  ]);
+  ```
+</Accordion>
+
+<Accordion title="Validate Before Withdrawals">
+  Always check balance before attempting withdrawals to provide better error messages:
+  
+  ```php
+  if (!$user->canWithdraw($amount)) {
+      return response()->json([
+          'error' => 'Insufficient balance'
+      ], 400);
+  }
+  
+  $user->withdraw($amount, $metadata);
+  ```
+</Accordion>
+
+<Accordion title="Use Confirmed Transactions">
+  Set the `confirmed` flag appropriately based on payment status:
+  
+  ```php
+  // Pending payment
+  $user->deposit($amount, $meta, false);
+  
+  // Later, after payment confirmation
+  $transaction->confirmed = true;
+  $transaction->save();
+  ```
+</Accordion>
+
+<Accordion title="Protect Against Race Conditions">
+  The Laravel Wallet package uses database locks to prevent race conditions during concurrent transactions. Always use the provided methods rather than manually updating balances.
+</Accordion>
+
+<Accordion title="Implement Transaction PIN Validation">
+  For sensitive operations, always require and validate the transaction PIN:
+  
+  ```php
+  // In your controller/service
+  if (!Hash::check($request->transaction_pin, $user->transaction_pin)) {
+      throw new AuthenticationException('Invalid PIN');
+  }
+  ```
+</Accordion>
+
+## Integration with Cashir System
+
+The platform includes Cashir-specific tables for transaction management:
+
+- `cashir_transactions` - Cashir payment transactions
+- `cashir_applications` - Loan/credit applications
+
+These work alongside the wallet system to provide complete financial tracking.
+
+**Location**: `database/migrations/2021_11_17_042548_create_cashir_transactions_table.php`
+
+## Package Documentation
+
+For advanced wallet features, refer to the official Laravel Wallet documentation:
+
+- [GitHub Repository](https://github.com/bavix/laravel-wallet)
+- Package Version: ^6.2
+- [Full Documentation](https://bavix.github.io/laravel-wallet/)
+
+## Related Concepts
+
+- [User Onboarding](/concepts/user-onboarding) - Transaction PIN setup
+- [Profile Management](/concepts/profile-management) - Banking information for withdrawals
+
+## Example Implementation
+
+```php
+// Loan disbursement example
+public function disburseLoan($loanApplication, $user) {
+    $amount = $loanApplication->approved_amount;
+    
+    // Credit user's wallet
+    $transaction = $user->deposit($amount, [
+        'type' => 'loan_disbursement',
+        'loan_application_id' => $loanApplication->id,
+        'disbursement_date' => now(),
+        'reference' => $loanApplication->reference
+    ]);
+    
+    // Log activity
+    ActivityLog::add(
+        "Loan disbursed: " . $amount,
+        'LOAN_DISBURSEMENT',
+        $user->id
+    );
+    
+    return $transaction;
+}
+
+// Loan repayment example
+public function processRepayment($loanApplication, $user, $amount, $pin) {
+    // Validate PIN
+    if (!Hash::check($pin, $user->transaction_pin)) {
+        throw new Exception('Invalid transaction PIN');
+    }
+    
+    // Check balance
+    if (!$user->canWithdraw($amount)) {
+        throw new Exception('Insufficient wallet balance');
+    }
+    
+    // Debit wallet
+    $transaction = $user->withdraw($amount, [
+        'type' => 'loan_repayment',
+        'loan_application_id' => $loanApplication->id,
+        'payment_date' => now()
+    ]);
+    
+    // Log activity
+    ActivityLog::add(
+        "Loan repayment: " . $amount,
+        'LOAN_REPAYMENT',
+        $user->id
+    );
+    
+    return $transaction;
+}
+```

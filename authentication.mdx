@@ -1,0 +1,482 @@
+---
+title: Authentication
+description: Learn how JWT-based authentication works in Rihsac API, including token management, middleware, and security best practices
+---
+
+# Authentication
+
+Rihsac API uses JWT (JSON Web Tokens) for secure, stateless authentication. This guide covers how to authenticate users, manage tokens, and implement proper security measures.
+
+## Overview
+
+The authentication system is built on `tymon/jwt-auth` package and provides:
+
+- Stateless JWT token authentication
+- Configurable token expiration
+- Automatic token refresh capabilities
+- Activity logging for security auditing
+- Role-based access control
+- Onboarding stage tracking
+
+## How JWT Authentication Works
+
+<Steps>
+  <Step title="User Registers or Logs In">
+    User provides credentials (email and password) to receive a JWT token
+  </Step>
+  <Step title="Token Issued">
+    Server validates credentials and issues a signed JWT token containing user information
+  </Step>
+  <Step title="Token Storage">
+    Client stores the token securely (e.g., in localStorage, sessionStorage, or memory)
+  </Step>
+  <Step title="Authenticated Requests">
+    Client includes token in Authorization header for all protected API requests
+  </Step>
+  <Step title="Token Validation">
+    Server validates token signature and expiration on each request
+  </Step>
+</Steps>
+
+## User Model JWT Implementation
+
+The User model implements the `JWTSubject` interface from tymon/jwt-auth:
+
+```php app/Models/User.php
+class User extends Authenticatable implements JWTSubject, Wallet
+{
+    use HasApiTokens, HasFactory, Notifiable, HasWallet;
+
+    /**
+     * Get the identifier that will be stored in the subject claim of the JWT.
+     *
+     * @return mixed
+     */
+    public function getJWTIdentifier() {
+        return $this->getKey();
+    }
+
+    /**
+     * Return a key value array, containing any custom claims to be added to the JWT.
+     *
+     * @return array
+     */
+    public function getJWTCustomClaims() {
+        return [];
+    }
+}
+```
+
+<Note>
+  The `getJWTIdentifier()` method returns the user's primary key (ID) which is embedded in the token. The `getJWTCustomClaims()` method allows you to add custom data to the JWT payload.
+</Note>
+
+## Registration Flow
+
+### Endpoint
+
+```
+POST /api/register
+```
+
+### Implementation
+
+The registration process is handled by the `RegisterService` (app/Services/Auth/RegisterService.php:22-48):
+
+```php
+public function register($request, AuthService $authService)
+{
+    try {
+        $data = [
+            'uuid' => Uuid::uuid4()->toString(),
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'onboarding_stage' => 'EMAIL_VERIFY',
+            'role' => 'USER',
+            'cashir_id' => $this->generateCashirId(),
+            'status' => 'enabled'
+        ];
+        $user = User::create($data);
+        $verificationCode = $this->generateVerificationCode();
+        if($user){
+            ActivityLog::add(' created an account','REGISTER', $user->id);
+            ActivationToken::add($user->email, 'EMAIL_TOKEN', $verificationCode);
+            $login = $authService->login($request);
+            $this->sendEmail($user, $verificationCode, 'Please verify your email address','mails.verify-email');
+
+            return $login;
+        }
+    } catch (\Throwable $th) {
+        report($th);
+        return null;
+    }
+}
+```
+
+### Key Features
+
+- **UUID Generation**: Each user gets a unique UUID
+- **Password Hashing**: Passwords are hashed using Laravel's `Hash::make()`
+- **Automatic Login**: After registration, user is automatically logged in
+- **Email Verification**: Verification code sent immediately
+- **Activity Logging**: Registration event is logged
+- **Cashir ID**: Unique 10-digit ID generated for transactions
+
+### Request Example
+
+```bash
+curl -X POST http://localhost:8000/api/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstname": "John",
+    "lastname": "Doe",
+    "email": "john.doe@example.com",
+    "password": "securePassword123",
+    "state_id": 1,
+    "phone_number": "+1234567890"
+  }'
+```
+
+### Response
+
+```json
+{
+  "status": "success",
+  "message": "User account created successfully",
+  "data": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+}
+```
+
+## Login Flow
+
+### Endpoint
+
+```
+POST /api/login
+```
+
+### Implementation
+
+The login process uses `JWTAuth::attempt()` from the AuthService (app/Services/Auth/AuthService.php:15-28):
+
+```php
+public function login($request)
+{
+    $credentials = $request->only('email', 'password');
+    try {
+        if (!$token = JWTAuth::attempt($credentials)) {
+            return null;
+        }
+        ActivityLog::add(' created an account','LOGIN', auth()->user()->id);
+        return $token;
+    } catch (JWTException $e) {
+        return null;
+    }
+}
+```
+
+### Request Example
+
+```bash
+curl -X POST http://localhost:8000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john.doe@example.com",
+    "password": "securePassword123"
+  }'
+```
+
+### Response
+
+```json
+{
+  "status": "success",
+  "message": "success",
+  "data": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOlwvXC9sb2NhbGhvc3Q6ODAwMFwvYXBpXC9sb2dpbiIsImlhdCI6MTYzMjQwNzYwMCwiZXhwIjoxNjMyNDExMjAwLCJuYmYiOjE2MzI0MDc2MDAsImp0aSI6IkRZWFZxVGo3eklTNXRvR3ciLCJzdWIiOjEsInBydiI6Ijg3ZTBhZjFlZjlmZDE1ODEyZmRlYzk3MTUzYTE0ZTBiMDQ3NTQ2YWEifQ.xxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
+```
+
+### Validation
+
+The AuthController validates credentials (app/Http/Controllers/Api/Auth/AuthController.php:19-22):
+
+```php
+$validator = Validator::make($request->all(), [
+    'email' => 'required|email',
+    'password' => 'required|string|min:6',
+]);
+```
+
+<Warning>
+  If authentication fails, the endpoint returns `null` which is handled by the controller to return an error response. Ensure proper error handling in your client application.
+</Warning>
+
+## Protected Routes
+
+All routes within the `jwt.user` middleware group require authentication:
+
+```php routes/api.php
+Route::middleware(['jwt.user'])->group(function(){
+    Route::post('/email/verify', [ProfileController::class, 'verifyEmailAddress']);
+    Route::post('/email/resend', [ProfileController::class, 'resendEmailWithCode']);
+    Route::post('/phone/update', [ProfileController::class, 'storePhoneNumber']);
+    Route::post('/phone/verify', [ProfileController::class, 'verifyPhoneNumber']);
+    Route::post('/phone/resend', [ProfileController::class, 'resendSMSWithCode']);
+    Route::post('/transaction-pin', [ProfileController::class, 'createTransactionPIN']);
+    Route::post('/username/update', [ProfileController::class, 'createUsername']);
+
+    Route::prefix('profile')->group(function() {
+        Route::post('/guarantor', [GuarantorController::class, 'store']);
+        Route::get('/guarantor', [GuarantorController::class, 'read']);
+        Route::post('/residential', [ResidentialController::class, 'store']);
+        Route::get('/residential', [ResidentialController::class, 'read']);
+        Route::post('/employment', [EmploymentController::class, 'store']);
+        Route::get('/employment', [EmploymentController::class, 'read']);
+        Route::post('/banking', [BankController::class, 'store']);
+        Route::get('/banking', [BankController::class, 'read']);
+    });
+});
+```
+
+## Using JWT Tokens in Requests
+
+### Authorization Header
+
+Include the token in the Authorization header for all protected endpoints:
+
+```bash
+curl -X GET http://localhost:8000/api/profile/guarantor \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+```
+
+### Parsing Tokens in Controllers
+
+Controllers can access the authenticated user via the JWT middleware:
+
+```php app/Http/Controllers/Api/Profile/ProfileController.php
+class ProfileController extends Controller
+{
+    public function __construct()
+    {
+        $this->user = JWTAuth::parseToken()->authenticate();
+    }
+
+    public function resendEmailWithCode(ProfileService $profileService)
+    {
+        $handle = $profileService->resendEmailWithCode($this->user);
+        // ... rest of the method
+    }
+}
+```
+
+<Note>
+  The `JWTAuth::parseToken()->authenticate()` method extracts the token from the Authorization header, validates it, and returns the authenticated user instance.
+</Note>
+
+## Token Refresh
+
+JWT tokens have an expiration time. The AuthService provides a refresh method:
+
+```php app/Services/Auth/AuthService.php
+public function refresh() {
+    return $this->createNewToken(auth()->refresh());
+}
+
+protected function createNewToken($token){
+    return response()->json([
+        'access_token' => $token,
+        'token_type' => 'bearer',
+        'role' => auth()->user()->role,
+        'onboarding_stage' => auth()->user()->onboarding_stage,
+        'expires_in' => auth()->factory()->getTTL() * 60,
+        'user' => auth()->user()
+    ]);
+}
+```
+
+This method returns:
+- **access_token**: The refreshed JWT token
+- **token_type**: "bearer"
+- **role**: User's role (USER, ADMIN, etc.)
+- **onboarding_stage**: Current onboarding stage
+- **expires_in**: Token expiration time in seconds
+- **user**: Complete user object
+
+## Logout
+
+The logout endpoint invalidates the current JWT token:
+
+```php app/Http/Controllers/Api/Auth/AuthController.php
+public function logout()
+{
+    auth()->logout();
+    ActivityLog::add('You logged out','LOGOUT', auth()->user()->id);
+    return response()->json(['message' => 'User successfully signed out']);
+}
+```
+
+### Request Example
+
+```bash
+curl -X POST http://localhost:8000/api/logout \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## User Attributes & Security
+
+### Protected Attributes
+
+Sensitive fields are hidden from JSON responses (app/Models/User.php:51-55):
+
+```php
+protected $hidden = [
+    'password',
+    'remember_token',
+    'transaction_pin'
+];
+```
+
+### Fillable Attributes
+
+Only these fields can be mass-assigned (app/Models/User.php:27-44):
+
+```php
+protected $fillable = [
+    'uuid',
+    'firstname',
+    'lastname',
+    'email',
+    'password',
+    'phone_number',
+    'username',
+    'state_id',
+    'cashir_id',
+    'email_verified',
+    'phone_number_verified',
+    'role',
+    'transaction_pin',
+    'avatar',
+    'onboarding_stage',
+    'status'
+];
+```
+
+## Role-Based Access Control
+
+Users have a `role` field that can be used for authorization:
+
+- **USER**: Standard user account (default)
+- **ADMIN**: Administrative access
+- Custom roles as needed
+
+You can query users by role or implement custom middleware to restrict access based on roles.
+
+## Activity Logging
+
+All authentication events are logged using the `ActivityLog` model:
+
+```php
+ActivityLog::add('created an account', 'REGISTER', $user->id);
+ActivityLog::add('logged in', 'LOGIN', auth()->user()->id);
+ActivityLog::add('You logged out', 'LOGOUT', auth()->user()->id);
+```
+
+This provides an audit trail for security and compliance purposes.
+
+## JWT Configuration
+
+To configure JWT settings, publish the jwt-auth config file:
+
+```bash
+php artisan vendor:publish --provider="Tymon\JWTAuth\Providers\LaravelServiceProvider"
+```
+
+Key configuration options in `config/jwt.php`:
+
+- **ttl**: Token time-to-live in minutes (default: 60)
+- **refresh_ttl**: Refresh token time-to-live in minutes (default: 20160)
+- **algo**: Hashing algorithm (default: HS256)
+- **secret**: JWT secret key (set in `.env` as `JWT_SECRET`)
+
+<Note>
+  Generate a JWT secret key using: `php artisan jwt:secret`
+</Note>
+
+## Security Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use HTTPS in Production">
+    Always use HTTPS in production to prevent token interception. JWT tokens transmitted over HTTP can be stolen by man-in-the-middle attacks.
+  </Accordion>
+
+  <Accordion title="Store Tokens Securely">
+    - **Web Apps**: Use httpOnly cookies or memory storage (avoid localStorage for XSS protection)
+    - **Mobile Apps**: Use secure storage mechanisms (Keychain on iOS, Keystore on Android)
+    - **Never** commit tokens to version control or log them
+  </Accordion>
+
+  <Accordion title="Implement Token Expiration">
+    Set appropriate TTL values based on your security requirements:
+    - Shorter TTL (15-60 minutes) for sensitive operations
+    - Longer TTL (hours/days) for less sensitive applications
+    - Use refresh tokens for extended sessions
+  </Accordion>
+
+  <Accordion title="Validate on Every Request">
+    The `jwt.user` middleware validates tokens on every request. Never skip this validation or implement custom "trust" mechanisms.
+  </Accordion>
+
+  <Accordion title="Use Strong Passwords">
+    Enforce password requirements:
+    - Minimum 6 characters (current requirement)
+    - Consider increasing to 8-12 characters
+    - Add complexity requirements (uppercase, numbers, special characters)
+    - Implement password strength checking on client-side
+  </Accordion>
+
+  <Accordion title="Monitor Authentication Events">
+    Use the ActivityLog system to:
+    - Detect unusual login patterns
+    - Track failed authentication attempts
+    - Identify potential security breaches
+    - Implement rate limiting on login endpoints
+  </Accordion>
+</AccordionGroup>
+
+## Error Handling
+
+### Common Authentication Errors
+
+| Status Code | Error | Cause | Solution |
+|-------------|-------|-------|----------|
+| 401 | Unauthorized | Invalid or missing token | Include valid JWT token in Authorization header |
+| 401 | Token Expired | JWT token has exceeded TTL | Refresh the token or login again |
+| 422 | Validation Error | Invalid email or password format | Check validation requirements |
+| 500 | Internal Server Error | Server-side issue | Check logs and report to support |
+
+### Example Error Response
+
+```json
+{
+  "status": "failure",
+  "message": "Unable to verify email account",
+  "data": null
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="User Onboarding" icon="user-check" href="/concepts/user-onboarding">
+    Learn about email verification, phone verification, and onboarding stages
+  </Card>
+  <Card title="JWT Configuration Guide" icon="gear" href="/guides/jwt-configuration">
+    Deep dive into JWT configuration and customization options
+  </Card>
+  <Card title="Profile Management" icon="id-card" href="/concepts/profile-management">
+    Explore protected profile endpoints and user data management
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/auth/login">
+    Browse complete authentication API documentation
+  </Card>
+</CardGroup>

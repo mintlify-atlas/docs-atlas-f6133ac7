@@ -1,0 +1,208 @@
+---
+title: 'User Onboarding'
+description: 'Understand the multi-step onboarding flow that guides new users through account verification'
+---
+
+## Overview
+
+The Rihsac API implements a structured onboarding process that ensures users complete essential verification steps before accessing the platform. The onboarding flow is tracked through the `onboarding_stage` field on the user model, which progresses through multiple stages.
+
+## Onboarding Stages
+
+The system uses distinct stages to track user progress:
+
+<Steps>
+  <Step title="Email Verification">
+    Users verify their email address using a verification code sent during registration.
+    
+    **Stage**: `UPDATE_PROFILE`
+    
+    **Endpoint**: `POST /api/email/verify`
+    
+    **Process**:
+    - User provides verification code from email
+    - System validates code against `activation_tokens` table
+    - Sets `email_verified` to `true`
+    - Updates `onboarding_stage` to `UPDATE_PROFILE`
+    - Activity logged as `EMAIL_VERIFY`
+  </Step>
+
+  <Step title="Profile Update">
+    Users provide basic personal information including phone number, name, and location.
+    
+    **Stage**: `PHONE_VERIFY`
+    
+    **Endpoint**: `POST /api/phone/update`
+    
+    **Required Fields**:
+    - `phone_number` - User's mobile number
+    - `firstname` - First name
+    - `lastname` - Last name
+    - `state_id` - State/region identifier
+    
+    **Process**:
+    - Validates user has verified email
+    - Updates user profile with provided information
+    - Generates SMS verification code
+    - Sends verification code to phone number
+    - Updates `onboarding_stage` to `PHONE_VERIFY`
+    - Activity logged as `PHONE_NUMBER`
+  </Step>
+
+  <Step title="Phone Verification">
+    Users verify their phone number using the SMS code received.
+    
+    **Stage**: `PRE_DASHBOARD`
+    
+    **Endpoint**: `POST /api/phone/verify`
+    
+    **Process**:
+    - User provides verification code from SMS
+    - System validates code against `activation_tokens` table
+    - Sets `phone_verified` to `true`
+    - Updates `onboarding_stage` to `PRE_DASHBOARD`
+    - Activity logged as `PHONE_VERIFY`
+  </Step>
+
+  <Step title="Username Creation">
+    Users create a unique username for their account.
+    
+    **Endpoint**: `POST /api/username/update`
+    
+    **Validation**:
+    - Required field
+    - Maximum 30 characters
+    - Must be unique across all users
+    
+    **Process**:
+    - Validates username availability
+    - Requires verified email and phone number
+    - Updates user record with username
+    - Activity logged as `USERNAME`
+  </Step>
+
+  <Step title="Transaction PIN">
+    Users create a 4-digit transaction PIN for securing financial operations.
+    
+    **Endpoint**: `POST /api/transaction-pin`
+    
+    **Validation**:
+    - Required field
+    - Must be confirmed (PIN confirmation required)
+    - Maximum 4 characters
+    
+    **Process**:
+    - Validates user has verified email and phone
+    - PIN is securely hashed before storage
+    - Field is hidden in API responses
+    - Activity logged as `PIN`
+  </Step>
+</Steps>
+
+## User Model Fields
+
+The onboarding process populates these key fields in the `users` table:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `uuid` | UUID | Unique identifier |
+| `email` | String | User's email address (unique) |
+| `email_verified` | Boolean | Email verification status (default: false) |
+| `phone_number` | String | Mobile number (unique) |
+| `phone_number_verified` | Boolean | Phone verification status (default: false) |
+| `firstname` | String | User's first name |
+| `lastname` | String | User's last name |
+| `state_id` | String | State/region identifier |
+| `username` | String | Unique username |
+| `transaction_pin` | String | Hashed 4-digit PIN |
+| `onboarding_stage` | String | Current onboarding step |
+| `status` | Enum | Account status (enabled/disabled, default: disabled) |
+| `role` | Enum | User role (USER/ADMIN/SUPERADMIN) |
+
+<Note>
+  The `transaction_pin` field is automatically hidden in API responses for security.
+</Note>
+
+## Verification Code System
+
+The platform uses the `activation_tokens` table to manage verification codes:
+
+- **Email Tokens**: Type `EMAIL_TOKEN`
+- **SMS Tokens**: Type `PHONE_TOKEN`
+- Tokens are deleted after successful verification
+- Resend functionality has rate limiting (1-minute cooldown)
+
+### Resending Verification Codes
+
+**Email Code Resend**
+```
+POST /api/email/resend
+```
+
+**SMS Code Resend**
+```
+POST /api/phone/resend
+```
+
+<Info>
+  Both resend endpoints enforce a 1-minute cooldown between requests to prevent abuse.
+</Info>
+
+## Implementation Reference
+
+The onboarding logic is implemented in:
+
+- **Controller**: `app/Http/Controllers/Api/Auth/OnboardingController.php`
+- **Service**: `app/Services/Auth/OnboardingService.php`
+- **Model**: `app/Models/User.php`
+- **Migration**: `database/migrations/2014_10_12_000000_create_users_table.php`
+
+## Authentication
+
+All onboarding endpoints (except registration) require JWT authentication:
+
+```php
+Authorization: Bearer {jwt_token}
+```
+
+The authenticated user is automatically retrieved from the JWT token:
+
+```php
+$this->user = JWTAuth::parseToken()->authenticate();
+```
+
+## Activity Logging
+
+Every onboarding step is logged in the `activity_logs` table with specific action types:
+
+- `EMAIL_VERIFY` - Email verification completed
+- `PHONE_NUMBER` - Phone number added
+- `PHONE_VERIFY` - Phone verification completed
+- `USERNAME` - Username created
+- `PIN` - Transaction PIN created
+
+## Best Practices
+
+<Accordion title="Validate Onboarding Stage Before Actions">
+  Always check the user's current `onboarding_stage` before allowing certain operations. Users should complete earlier stages before accessing advanced features.
+</Accordion>
+
+<Accordion title="Handle Failed Verifications Gracefully">
+  The service methods return `null` on failure. Always check return values and provide clear error messages to users.
+</Accordion>
+
+<Accordion title="Secure Transaction PIN Storage">
+  Transaction PINs must be hashed before storage and never returned in API responses. The field is automatically hidden via the User model's `$hidden` array.
+</Accordion>
+
+<Accordion title="Monitor Activation Token Lifecycle">
+  Tokens should be deleted after successful verification to prevent reuse. Failed verification attempts should not delete tokens to allow retry.
+</Accordion>
+
+## Next Steps
+
+After completing onboarding, users can:
+
+- Complete their [profile information](/concepts/profile-management)
+- Access the [wallet system](/concepts/wallet-system)
+- Apply for loans and other financial services

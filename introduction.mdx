@@ -1,0 +1,155 @@
+---
+title: Introduction
+description: Welcome to the Rihsac API - A comprehensive financial services platform for loan applications, cash transactions, and user profile management
+---
+
+# Welcome to Rihsac API
+
+Rihsac API is a Laravel-based financial services platform that provides comprehensive solutions for loan applications, cash transactions (Cashir), and user profile management with integrated wallet functionality.
+
+## Core Features
+
+<CardGroup cols={2}>
+  <Card title="JWT Authentication" icon="lock" href="/authentication">
+    Secure JWT-based authentication with email and phone verification
+  </Card>
+  <Card title="User Onboarding" icon="user-check" href="/concepts/user-onboarding">
+    Multi-step onboarding with profile completion tracking
+  </Card>
+  <Card title="Loan Management" icon="money-bill" href="/api/loans/overview">
+    Complete loan application and status tracking system
+  </Card>
+  <Card title="Cashir Transactions" icon="credit-card" href="/api/cashir/overview">
+    Transaction processing with multiple payment channels
+  </Card>
+  <Card title="Wallet System" icon="wallet" href="/concepts/wallet-system">
+    Integrated wallet using bavix/laravel-wallet
+  </Card>
+  <Card title="Profile Management" icon="id-card" href="/concepts/profile-management">
+    Guarantor, employment, residential, and banking information
+  </Card>
+</CardGroup>
+
+## Quick Start
+
+Get started with Rihsac API in minutes:
+
+<Steps>
+  <Step title="Register a User">
+    Create a new user account with email and password
+    ```bash
+    POST /api/register
+    ```
+  </Step>
+  <Step title="Authenticate">
+    Login to receive your JWT access token
+    ```bash
+    POST /api/login
+    ```
+  </Step>
+  <Step title="Complete Onboarding">
+    Verify email, phone, set transaction PIN, and complete profile
+  </Step>
+  <Step title="Make API Calls">
+    Use your JWT token to access protected endpoints
+  </Step>
+</Steps>
+
+<Card title="Ready to Start?" icon="rocket" href="/quickstart">
+  Follow our quickstart guide to make your first API request in under 5 minutes
+</Card>
+
+## Technology Stack
+
+Rihsac API is built with modern, battle-tested technologies:
+
+- **Framework**: Laravel 8.x (PHP 7.3+/8.0+)
+- **Authentication**: tymon/jwt-auth for JWT token management
+- **Wallet System**: bavix/laravel-wallet for transaction handling
+- **SMS Verification**: Twilio SDK integration
+- **Image Processing**: Intervention/Image for document uploads
+
+## Key Capabilities
+
+### Authentication & Security
+- JWT-based authentication with configurable token expiration
+- Email and phone number verification
+- Transaction PIN for sensitive operations
+- Activity logging for user actions
+
+### User Management
+- Multi-stage onboarding process
+- Profile completion tracking with `onboarding_stage` field
+- Role-based access control (USER, ADMIN, etc.)
+- Document upload and verification for KYC
+
+### Financial Services
+- Loan application management
+- Cashir transaction processing
+- Integrated wallet system with balance tracking
+- Multiple payment channel support
+
+### Profile Information
+- **Guarantor Information**: Store and manage guarantor details
+- **Employment Details**: Track employment history and status
+- **Residential Information**: Maintain current address details
+- **Banking Information**: Securely store bank account details
+
+## API Endpoints Overview
+
+The Rihsac API provides RESTful endpoints organized into logical groups:
+
+```bash
+# Authentication
+POST   /api/login
+POST   /api/register
+
+# Onboarding (JWT Protected)
+POST   /api/email/verify
+POST   /api/phone/verify
+POST   /api/transaction-pin
+POST   /api/username/update
+
+# Profile Management (JWT Protected)
+POST   /api/profile/guarantor
+GET    /api/profile/guarantor
+POST   /api/profile/employment
+GET    /api/profile/employment
+POST   /api/profile/residential
+GET    /api/profile/residential
+POST   /api/profile/banking
+GET    /api/profile/banking
+```
+
+<Note>
+  All endpoints except `/login` and `/register` require JWT authentication via the `jwt.user` middleware.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart Guide" icon="play" href="/quickstart">
+    Set up your development environment and make your first API call
+  </Card>
+  <Card title="Authentication Guide" icon="key" href="/authentication">
+    Learn how to implement JWT authentication in your application
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/auth/login">
+    Explore detailed API endpoint documentation
+  </Card>
+  <Card title="Core Concepts" icon="lightbulb" href="/concepts/user-onboarding">
+    Understand the user journey and onboarding flow
+  </Card>
+</CardGroup>
+
+## Support
+
+Need help? Here are some resources:
+
+- Check out our comprehensive API reference documentation
+- Review the core concepts and guides sections
+- Ensure your environment meets the requirements (PHP 7.3+, MySQL, etc.)
+
+<Warning>
+  This API is designed for financial services. Ensure you implement proper security measures, use HTTPS in production, and follow PCI compliance guidelines when handling sensitive financial data.
+</Warning>
