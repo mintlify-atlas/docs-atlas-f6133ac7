@@ -29,13 +29,17 @@ Register a new user account. Upon successful registration, the user is automatic
 <ParamField body="email" type="string" required>
   User's email address
   
-  **Validation:** Must be a valid email format and unique in the system
+  **Validation:** Required in RegisterService but not validated in StoreUserRequest. Should be unique in the system.
+  
+  <Note>The validation rules in `StoreUserRequest.php` do not include email validation. You may want to add `'email' => 'required|email|unique:users,email'` to the rules.</Note>
 </ParamField>
 
 <ParamField body="password" type="string" required>
   User's password
   
-  **Validation:** Minimum 6 characters
+  **Validation:** Required in RegisterService but not validated in StoreUserRequest.
+  
+  <Note>The validation rules in `StoreUserRequest.php` do not include password validation. You may want to add `'password' => 'required|string|min:6'` to the rules.</Note>
 </ParamField>
 
 <ParamField body="state_id" type="integer" required>

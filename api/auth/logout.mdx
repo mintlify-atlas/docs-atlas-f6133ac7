@@ -12,6 +12,14 @@ POST /api/logout
 
 Logout the currently authenticated user. This endpoint invalidates the JWT token and logs the logout activity.
 
+<Warning>
+**Route Not Currently Defined**: The logout functionality exists in `AuthController.php:34`, but the route is not currently registered in `routes/api.php`. You will need to add this route to use this endpoint:
+
+```php
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('jwt.user');
+```
+</Warning>
+
 <Note>
 This endpoint requires authentication. Include the JWT token in the Authorization header.
 </Note>
@@ -174,5 +182,5 @@ After logout, users must:
 ## Implementation Reference
 
 **Controller:** `app/Http/Controllers/Api/Auth/AuthController.php:34`  
-**Route:** Defined in `routes/api.php` (protected route group)  
-**Middleware:** `jwt.user`
+**Route:** **NOT currently defined** in `routes/api.php` - must be added manually  
+**Middleware:** `jwt.user` (recommended)

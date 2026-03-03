@@ -3,13 +3,23 @@ title: "Cashir Transactions"
 description: "Managing cash transactions through the Rihsac Cashir API"
 ---
 
+<Warning>
+**Planned Feature - Not Yet Implemented**: The Cashir transaction endpoints are not currently implemented. No routes or controllers exist for Cashir operations. This documentation describes the intended API based on the database schema in `database/migrations/2021_11_17_042548_create_cashir_transactions_table.php`.
+
+To implement these endpoints, you will need to:
+1. Create a `CashirController` or similar in `app/Http/Controllers/Api/`
+2. Add routes to `routes/api.php`
+3. Implement the business logic in a service class
+4. Configure payment channel integrations
+</Warning>
+
 ## Introduction
 
-Cashir transactions represent the actual movement of cash within the Rihsac platform. Each transaction is tracked through multiple status states and can be processed through various payment channels.
+Cashir transactions would represent the actual movement of cash within the Rihsac platform. Each transaction would be tracked through multiple status states and can be processed through various payment channels.
 
 ## Transaction Operations
 
-Based on the system structure, Cashir supports:
+Based on the system structure from `structure.md`, Cashir would support:
 
 - **Create Order** - Initialize a new cash transaction
 - **Request Cash** - Submit a cash request
@@ -18,7 +28,7 @@ Based on the system structure, Cashir supports:
 - **Delete Transaction** - Cancel a transaction
 
 <Note>
-All Cashir endpoints require authentication via JWT middleware.
+All Cashir endpoints would require authentication via JWT middleware.
 </Note>
 
 ## Create Transaction

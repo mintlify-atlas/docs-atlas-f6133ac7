@@ -3,9 +3,18 @@ title: "Loan Applications"
 description: "Managing loan applications through the Rihsac API"
 ---
 
+<Warning>
+**Planned Feature - Not Yet Implemented**: The loan application endpoints are not currently implemented. No routes or controllers exist for loan operations. This documentation describes the intended API based on the database schema in `database/migrations/2021_11_16_163208_create_loan_applications_table.php`.
+
+To implement these endpoints, you will need to:
+1. Create a `LoanController` in `app/Http/Controllers/Api/`
+2. Add routes to `routes/api.php`
+3. Implement the business logic in a service class
+</Warning>
+
 ## Endpoints
 
-Based on the system structure, loan applications support the following operations:
+Based on the system structure, loan applications would support the following operations:
 
 - **List Applications** - View all loan applications for a user
 - **Read Application** - Get details of a specific loan application
@@ -13,7 +22,7 @@ Based on the system structure, loan applications support the following operation
 - **Update Application** - Modify an existing loan application
 
 <Note>
-All loan application endpoints require authentication via JWT middleware.
+All loan application endpoints would require authentication via JWT middleware.
 </Note>
 
 ## Create Loan Application
