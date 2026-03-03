@@ -1,0 +1,117 @@
+{
+  "projectType": "api-service",
+  "projectName": "Rihsac API",
+  "projectDescription": "A Laravel-based financial services API for loan applications, cash transactions, and user profile management.",
+  "theme": "mint",
+  "primaryColor": "#10b981",
+  "lightColor": "#34d399",
+  "darkColor": "#059669",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/user-onboarding",
+              "concepts/profile-management",
+              "concepts/wallet-system"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/environment-setup",
+              "guides/database-migrations",
+              "guides/jwt-configuration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": [
+              "api/auth/login",
+              "api/auth/register",
+              "api/auth/logout"
+            ]
+          },
+          {
+            "group": "Onboarding",
+            "pages": [
+              "api/onboarding/verify-email",
+              "api/onboarding/verify-phone",
+              "api/onboarding/transaction-pin",
+              "api/onboarding/username"
+            ]
+          },
+          {
+            "group": "Profile",
+            "pages": [
+              "api/profile/guarantor",
+              "api/profile/employment",
+              "api/profile/residential",
+              "api/profile/banking"
+            ]
+          },
+          {
+            "group": "Loans",
+            "pages": [
+              "api/loans/overview",
+              "api/loans/application"
+            ]
+          },
+          {
+            "group": "Cashir",
+            "pages": [
+              "api/cashir/overview",
+              "api/cashir/transactions"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "JWT-based authentication with email and phone verification",
+    "Multi-step user onboarding with profile completion tracking",
+    "Loan application management with status tracking",
+    "Cashir transaction processing with multiple payment channels",
+    "Integrated wallet system using bavix/laravel-wallet",
+    "Document upload and verification for KYC",
+    "Guarantor, employment, residential, and banking information management",
+    "SMS verification via Twilio integration",
+    "Transaction PIN security for sensitive operations"
+  ],
+  "publicApiSurface": [
+    "POST /api/login",
+    "POST /api/register",
+    "POST /api/email/verify",
+    "POST /api/email/resend",
+    "POST /api/phone/update",
+    "POST /api/phone/verify",
+    "POST /api/phone/resend",
+    "POST /api/transaction-pin",
+    "POST /api/username/update",
+    "POST /api/profile/guarantor",
+    "GET /api/profile/guarantor",
+    "POST /api/profile/residential",
+    "GET /api/profile/residential",
+    "POST /api/profile/employment",
+    "GET /api/profile/employment",
+    "POST /api/profile/banking",
+    "GET /api/profile/banking"
+  ]
+}
